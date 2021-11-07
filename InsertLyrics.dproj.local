@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.451,=D:\git-win\MidiFilter\UXmlParser.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.380,=C:\Users\Jürg Müller\Documents\Embarcadero\Studio\Projekte\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.265,C:\Users\Jürg Müller\Documents\Embarcadero\Studio\Projekte\Unit1.pas=D:\git-win\InsertLyrics\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.459,D:\git-win\InsertLyrics\UMS_Patch.pas=D:\git-win\InsertLyrics\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.004,=D:\git-win\InsertLyrics\source\UEventArray.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.404,D:\git-win\MidiFilter\UXmlParser.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.459,D:\git-win\InsertLyrics\UMS_Patch.dfm=D:\git-win\InsertLyrics\Unit1.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.094,=D:\git-win\InsertLyrics\source\UXmlParser.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.478,=D:\git-win\MidiFilter\UMyMidiStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.424,D:\git-win\MidiFilter\UMyMidiStream.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.587,C:\Users\Jürg Müller\Documents\Embarcadero\Studio\Projekte\Project2.dproj=D:\git-win\InsertLyrics\InsertLyrics.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.429,=D:\git-win\MidiFilter\UXmlNode.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.524,D:\git-win\MidiFilter\UXmlNode.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.403,=D:\git-win\MidiFilter\UMidiDataStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.381,=D:\git-win\MidiFilter\UEventArray.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.721,D:\git-win\MidiFilter\UEventArray.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.454,=D:\git-win\MidiFilter\UMyMemoryStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.114,D:\git-win\MidiFilter\UMyMemoryStream.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.461,D:\git-win\MidiFilter\UMidiDataStream.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.054,=D:\git-win\InsertLyrics\source\UMyMidiStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.299,D:\git-win\MidiFilter\Midi.pas=</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.746,=D:\git-win\MidiFilter\Midi.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.034,=D:\git-win\InsertLyrics\source\UMyMemoryStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.024,=D:\git-win\InsertLyrics\source\UMidiDataStream.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.265,C:\Users\Jürg Müller\Documents\Embarcadero\Studio\Projekte\Unit1.dfm=D:\git-win\InsertLyrics\Unit1.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.074,=D:\git-win\InsertLyrics\source\UXmlNode.pas</Transaction>
+  </Transactions>
+</BorlandProject>
