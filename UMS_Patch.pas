@@ -57,6 +57,8 @@ var
   duration, dots: string;
   style, value: string;
   Title, Composer, Copyright: string;
+  iLyricsTrack, iScore: integer;
+  UsesLyrics: boolean;
 
   procedure AppendEvent;
   begin
@@ -81,11 +83,15 @@ var
     k: integer;
   begin
     k := 0;
-    repeat
+    result := false;
+    Child := nil;
+
+    while not result and (Parent <> nil) and (k < Parent.Count) do
+    begin
       Child := Parent.ChildNodes[k];
       inc(k);
       result := Child.Name = Name;
-    until result or (k >= Parent.Count);
+    end;
   end;
 
 begin
@@ -101,6 +107,13 @@ begin
   end;
 
   Events.DetailHeader.smallestFraction := 64; // 64th
+  iLyricsTrack := 0;
+  while iLyricsTrack < Length(Events.TrackArr) do
+    if TEventArray.HasSound(Events.TrackArr[iLyricsTrack]) then
+      break
+    else
+      inc(iLyricsTrack);
+
 
   if not FileExists(FileName + '.mscz') and
      not FileExists(FileName + '.mscx') then
@@ -115,9 +128,6 @@ begin
      not KXmlParser.ParseFile(FileName + '.mscx', Root) then
     exit;
 
-  Event.Clear;
-  AppendEvent;
-
   Score := Root.ChildNodes[Root.Count-1];
   if (Score.Name <> 'Score') or
      not GetChild('Staff', Staff, Score) then
@@ -129,100 +139,124 @@ begin
   Title := '';
   Composer := '';
   Copyright := '';
-  for i := 0 to Staff.Count-1 do
+
+  for iScore := 0 to Score.Count-1 do
   begin
-    Measure := Staff.ChildNodes[i];
-    if Measure.Name = 'VBox' then
+    SetLength(MidiEvents, 0);
+    Event.Clear;
+    AppendEvent;
+    UsesLyrics := false;
+    Staff := Score.ChildNodes[iScore];
+    if Staff.Name = 'Staff' then
     begin
-      for j := 0 to Measure.Count-1 do // VBox
+      for i := 0 to Staff.Count-1 do
       begin
-        Child := Measure.ChildNodes[j];
-        if Child.Name = 'Text' then
+        Measure := Staff.ChildNodes[i];
+        if Measure.Name = 'VBox' then
         begin
-          style := '';
-          value := '';
-          for k := 0 to Child.Count-1 do
+          for j := 0 to Measure.Count-1 do // VBox
           begin
-            if Child.ChildNodes[k].Name = 'style' then
-              style := Child.ChildNodes[k].XmlValue
-            else
-            if Child.ChildNodes[k].Name = 'text' then
-              value := Child.ChildNodes[k].XmlValue;
-          end;
-          if style = 'Title' then
-            Title := value
-          else
-          if style = 'Composer' then
-            Composer := value
-          else
-          if style = '' then
-            Copyright := value;
-        end;
-      end;
-    end else
-    if Measure.Name = 'Measure' then
-    begin
-      // nur die erste Stimme (voice) wird untersucht
-      if GetChild('voice', Voice, Measure) then
-      begin
-        for j := 0 to Voice.Count-1 do
-        begin
-{$if false}
-          // berücksichtigt mehrere Lyrics im selben Chord
-          if Voice.ChildNodes[j].Name = 'Chord' then
-          begin
-            Child := Voice.ChildNodes[j];
-            for k := 0 to Child.Count-1 do
+            Child := Measure.ChildNodes[j];
+            if Child.Name = 'Text' then
             begin
-              Child1 := Child.ChildNodes[k];
-              if Child1.Name = 'Lyrics' then
+              style := '';
+              value := '';
+              for k := 0 to Child.Count-1 do
               begin
-                if (Child1.Count = 1) then
+                if Child.ChildNodes[k].Name = 'style' then
+                  style := Child.ChildNodes[k].XmlValue
+                else
+                if Child.ChildNodes[k].Name = 'text' then
+                  value := Child.ChildNodes[k].XmlValue;
+              end;
+              if style = 'Title' then
+                Title := value
+              else
+              if style = 'Composer' then
+                Composer := value
+              else
+              if style = '' then
+                Copyright := value;
+            end;
+          end;
+        end else
+        if Measure.Name = 'Measure' then
+        begin
+          // nur die erste Stimme (voice) wird untersucht
+          if GetChild('voice', Voice, Measure) then
+          begin
+            for j := 0 to Voice.Count-1 do
+            begin
+    {$if false}
+              // berücksichtigt mehrere Lyrics im selben Chord
+              if Voice.ChildNodes[j].Name = 'Chord' then
+              begin
+                Child := Voice.ChildNodes[j];
+                for k := 0 to Child.Count-1 do
                 begin
-                  Child1 := Child1.ChildNodes[0];
-                  if Child1.Name = 'text' then
+                  Child1 := Child.ChildNodes[k];
+                  if Child1.Name = 'Lyrics' then
                   begin
-                    Event.MakeMetaEvent(5, AnsiString(Child1.Value));
-                    AppendEvent;
+                    if (Child1.Count = 1) then
+                    begin
+                      Child1 := Child1.ChildNodes[0];
+                      if Child1.Name = 'text' then
+                      begin
+                        Event.MakeMetaEvent(5, AnsiString(Child1.Value));
+                        AppendEvent;
+                      end;
+                    end;
                   end;
                 end;
               end;
-            end;
-          end;
-{$endif}
-          if GetChild('duration', Child, Voice.ChildNodes[j]) or
-             GetChild('durationType', Child, Voice.ChildNodes[j]) then
-          begin
-            duration := Child.Value;
-            dots := '';
-            if GetChild('dots', Child, Voice.ChildNodes[j]) then
-              dots := Child.Value;
-{$if true}
-            // höchstens ein Lyrics im selben Chord
-            if GetChild('Lyrics', Child, Voice.ChildNodes[j]) then
-            begin
-              if (Child.Count = 1) then
+    {$endif}
+              if GetChild('duration', Child, Voice.ChildNodes[j]) or
+                 GetChild('durationType', Child, Voice.ChildNodes[j]) then
               begin
-                Child := Child.ChildNodes[0];
-                if Child.Name = 'text' then
+                duration := Child.Value;
+                dots := '';
+                if GetChild('dots', Child, Voice.ChildNodes[j]) then
+                  dots := Child.Value;
+    {$if true}
+                // höchstens ein Lyrics im selben Chord
+                if GetChild('Lyrics', Child, Voice.ChildNodes[j]) then
                 begin
-                  Event.MakeMetaEvent(5, AnsiString(Child.XmlValue));
-                  AppendEvent;
+                  if (Child.Count = 1) then
+                  begin
+                    Child := Child.ChildNodes[0];
+                    if Child.Name = 'text' then
+                    begin
+                      UsesLyrics := true;
+                      Event.MakeMetaEvent(5, AnsiString(Child.XmlValue));
+                      AppendEvent;
+                    end;
+                  end;
                 end;
+    {$endif}
+                if Pos('/', duration) = 0 then
+                begin
+                  d := GetFraction_(duration);
+                  if d > 0 then
+                    duration := '1/' + IntToStr(d);
+                end;
+                delta := Events.DetailHeader.GetChordTicks(duration, dots);
+                inc(MidiEvents[Length(MidiEvents)-1].var_len, delta);
               end;
             end;
-{$endif}
-            if Pos('/', duration) = 0 then
-            begin
-              d := GetFraction_(duration);
-              if d > 0 then
-                duration := '1/' + IntToStr(d);
-            end;
-            delta := Events.DetailHeader.GetChordTicks(duration, dots);
-            inc(MidiEvents[Length(MidiEvents)-1].var_len, delta);
           end;
         end;
       end;
+
+      if (iLyricsTrack < Length(Events.TrackArr)) and
+         UsesLyrics then
+      begin
+        for k := 0 to Length(Events.TrackArr[iLyricsTrack])-1 do
+          Events.TrackArr[iLyricsTrack][k].var_len := Events.DetailHeader.GetRaster(Events.TrackArr[iLyricsTrack][k].var_len);
+
+        TEventArray.MergeTracks(Events.TrackArr[iLyricsTrack], MidiEvents);
+        TEventArray.MoveLyrics(Events.TrackArr[iLyricsTrack]);
+      end;
+      inc(iLyricsTrack);
     end;
   end;
 
@@ -232,22 +266,6 @@ begin
     Events.Copyright := AnsiString(Copyright);
   if (Events.Maker = '') then
     Events.Maker := AnsiString(Composer);
-
-  i := 0;
-  while i < Length(Events.TrackArr) do
-    if TEventArray.HasSound(Events.TrackArr[i]) then
-      break
-    else
-      inc(i);
-
-  if (i < Length(Events.TrackArr)) then
-  begin
-    for k := 0 to Length(Events.TrackArr[i])-1 do
-      Events.TrackArr[i][k].var_len := Events.DetailHeader.GetRaster(Events.TrackArr[i][k].var_len);
-
-    TEventArray.MergeTracks(Events.TrackArr[i], MidiEvents);
-    TEventArray.MoveLyrics(Events.TrackArr[i]);
-  end;
 
   SaveDialog1.FileName := FileName + '_.mid';
   if SaveDialog1.Execute then

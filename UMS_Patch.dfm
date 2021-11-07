@@ -1,7 +1,7 @@
 object frmMS_Patch: TfrmMS_Patch
   Left = 0
   Top = 0
-  Caption = 'MuseScore MIDI Lyrics Patch'
+  Caption = 'Inserts MuseScore Lyrics into Midi File'
   ClientHeight = 260
   ClientWidth = 440
   Color = clBtnFace
@@ -30,9 +30,9 @@ object frmMS_Patch: TfrmMS_Patch
         '- Export the score as midi file with same name as the mscz / msc' +
         'x file'
       ''
-      'The first voice must contain the lyrics!'
       ''
-      'Now, use the button "Open to Merge".'
+      ''
+      'Now, use the button "Open to Insert Lyrics".'
       '')
     ReadOnly = True
     TabOrder = 0
@@ -42,7 +42,7 @@ object frmMS_Patch: TfrmMS_Patch
     Top = 208
     Width = 131
     Height = 25
-    Caption = 'Open to Merge'
+    Caption = 'Open to Insert Lyrics'
     TabOrder = 1
     OnClick = Button1Click
   end
