@@ -1,4 +1,4 @@
-unit UMS_Patch;
+ï»¿unit UMS_Patch;
 
 interface
 
@@ -98,6 +98,14 @@ begin
   result := false;
   SetLength(FileName, Length(FileName) - Length(ExtractFileExt(FileName)));
 
+  if not FileExists(FileName + '.mid') then
+  begin
+    Application.MessageBox(
+      PChar(Format('File "%s.mid" does not exist!',
+                   [FileName])), 'Error', MB_OK);
+    exit;
+  end;
+
   Events := TEventArray.Create;
   if not Events.LoadMidiFromFile(FileName + '.mid') then
   begin
@@ -188,7 +196,7 @@ begin
             for j := 0 to Voice.Count-1 do
             begin
     {$if false}
-              // berücksichtigt mehrere Lyrics im selben Chord
+              // berÃ¼cksichtigt mehrere Lyrics im selben Chord
               if Voice.ChildNodes[j].Name = 'Chord' then
               begin
                 Child := Voice.ChildNodes[j];
@@ -202,7 +210,7 @@ begin
                       Child1 := Child1.ChildNodes[0];
                       if Child1.Name = 'text' then
                       begin
-                        Event.MakeMetaEvent(5, AnsiString(Child1.Value));
+                        Event.MakeMetaEvent(5, UTF8Encode(Child1.Value));
                         AppendEvent;
                       end;
                     end;
@@ -218,16 +226,22 @@ begin
                 if GetChild('dots', Child, Voice.ChildNodes[j]) then
                   dots := Child.Value;
     {$if true}
-                // höchstens ein Lyrics im selben Chord
+                // hÃ¶chstens ein Lyrics im selben Chord
                 if GetChild('Lyrics', Child, Voice.ChildNodes[j]) then
                 begin
-                  if (Child.Count = 1) then
+                {
+                <Lyrics>
+                  <ticks>480</ticks>
+                  <ticks_f>1/4</ticks_f>
+                  <text>Bien</text>
+                  </Lyrics>
+                  }
+                  if GetChild('text', Child, Child) then
                   begin
-                    Child := Child.ChildNodes[0];
                     if Child.Name = 'text' then
                     begin
                       UsesLyrics := true;
-                      Event.MakeMetaEvent(5, AnsiString(Child.XmlValue));
+                      Event.MakeMetaEvent(5, UTF8Encode(Child.XmlValue));
                       AppendEvent;
                     end;
                   end;
@@ -261,11 +275,11 @@ begin
   end;
 
   if (Events.Text_ = '') then
-    Events.Text_ := AnsiString(Title);
+    Events.Text_ := UTF8Encode(Title);
   if (Events.Copyright = '') then
-    Events.Copyright := AnsiString(Copyright);
+    Events.Copyright := UTF8Encode(Copyright);
   if (Events.Maker = '') then
-    Events.Maker := AnsiString(Composer);
+    Events.Maker := UTF8Encode(Composer);
 
   SaveDialog1.FileName := FileName + '_.mid';
   if SaveDialog1.Execute then
