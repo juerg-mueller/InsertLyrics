@@ -324,6 +324,8 @@ begin
   Change('&amp;', '&');
   Change('&lt;', '<');
   Change('&gt;', '>');
+
+//  result := UTF8Encode(result);
 end;
 
 

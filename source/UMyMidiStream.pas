@@ -74,8 +74,8 @@ type
     procedure AppendByte(b: byte);
     procedure MakeMetaEvent(EventNr: byte; b: AnsiString);
     procedure FillBytes(const b: AnsiString);
-    function GetBytes: AnsiString;
-    property str: AnsiString read GetBytes; // zum Debuggen
+    function GetBytes: string;
+    property str: String read GetBytes; // zum Debuggen
   end;
   PMidiEvent = ^TMidiEvent;
 
@@ -151,20 +151,15 @@ function BytesToAnsiString(const Bytes: array of byte): AnsiString;
 
 implementation
 
-function TMidiEvent.GetBytes: AnsiString;
+function TMidiEvent.GetBytes: String;
 var
   i: integer;
   c: AnsiChar;
+  s: AnsiString;
 begin
-  SetLength(result, Length(Bytes));
-  for i := 0 to Length(Bytes)-1 do
-  begin
-    c := AnsiChar(Bytes[i]);
-    if c >= ' ' then
-      result[i + 1] := c
-    else
-      result[i + 1] := '.';
-  end;
+  SetLength(s, Length(Bytes));
+  Move(Bytes[0], s[1], Length(Bytes));
+  result := UTF8ToString(s);
 end;
 
 function BytesToAnsiString(const Bytes: array of byte): AnsiString;

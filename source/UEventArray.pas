@@ -37,10 +37,10 @@ type
     TrackName_: TAnsiStringArray; // 03
     TrackArr_: TTrackEventArray;
   public
-    Text_: AnsiString;     // 01
-    Copyright: AnsiString; // 02
-    Instrument: AnsiString;// 04
-    Maker: AnsiString;     // 06
+    Text_: String;     // 01
+    Copyright: String; // 02
+    Instrument: String;// 04
+    Maker: String;     // 06
     DetailHeader: TDetailHeader;
     SingleTrack: TMidiEventArray;
     ChannelArray: TChannelEventArray;
@@ -262,6 +262,12 @@ begin
   end;
 end;
 
+{
+      META_TITLE           = 0x10,     // mscore extension
+      META_SUBTITLE        = 0x11,     // mscore extension
+      META_COMPOSER        = 0x12,   // mscore extension
+
+}
 function TEventArray.GetHeaderTrack: TMidiEventArray;
 
   procedure AppendMetaEvent(EventNr: integer; b: AnsiString);
@@ -283,7 +289,10 @@ begin
   AppendMetaEvent($58, DetailHeader.GetMetaMeasure58);
 
   if Text_ <> '' then
+  begin
     AppendMetaEvent(1, Text_);
+    AppendMetaEvent($10, Text_);
+  end;
   if Copyright <> '' then
     AppendMetaEvent(2, Copyright);
   if Maker <> '' then

@@ -530,7 +530,7 @@ begin
   SetLength(Utf8, Size);
   Move(PByte(Memory)[0], Utf8[1], Size);
 
-  stream := UTF8Decode(utf8);
+  stream := UTF8ToString(utf8);
   result := Parse(Root);
 end;
 
