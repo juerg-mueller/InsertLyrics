@@ -9,3 +9,5 @@ Dieses Programm ergänzt eine exportierte Midi-Datei, indem es die Lyrics der ms
 InsertLyrics ist ein Workaround, bis MuseScore die Funktionalität enthält.
 
 Kontakt unter: https://musescore.org/de/node/326233
+
+11/10/2021: International Unicode improvements
