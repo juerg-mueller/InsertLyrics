@@ -43,16 +43,8 @@ Const
 
   Dur: array [-6..6] of string = ('Ges', 'Des','As', 'Es', 'B', 'F', 'C', 'G', 'D', 'A', 'E', 'H', 'Fis');
 
-//  SustainPitch    = 26;
-  ControlSustain  = $1f;   // + 3 für TRepeat
-
 type
   TInt4 = array [0..3] of integer;
-
-  eTranslate = (nothing, toGriff, toSound); 
-
-    TPushPullSet = set of (push, pull);
-
 
   TMidiEvent = record
     command: byte;
@@ -64,10 +56,6 @@ type
     procedure Clear;
     function Event: byte;
     function Channel: byte;
-    function IsSustain: boolean;
-    function MakeNewSustain: boolean;
-    function IsPush: boolean;
-    procedure MakeSustain(Push: boolean);
     function IsEndOfTrack: boolean;
     function IsEqualEvent(const Event: TMidiEvent): boolean;
     procedure SetEvent(c, d1_, d2_: integer);
@@ -75,7 +63,12 @@ type
     procedure MakeMetaEvent(EventNr: byte; b: AnsiString);
     procedure FillBytes(const b: AnsiString);
     function GetBytes: string;
-    property str: String read GetBytes; // zum Debuggen
+    function GetAnsi: AnsiString;
+    function GetInt: cardinal;
+
+    property str: String read GetBytes;
+    property ansi: AnsiString read GetAnsi;
+    property int: cardinal read GetInt;
   end;
   PMidiEvent = ^TMidiEvent;
 
@@ -145,21 +138,59 @@ function MidiOnlyNote(Pitch: byte; Sharp: boolean = false): string;
 function MidiNote(Pitch: byte): string;
 function Min(a, b: integer): integer; inline;
 function Max(a, b: integer): integer; inline;
-function PitchFrequenz(Pitch: byte): double;
 
 function BytesToAnsiString(const Bytes: array of byte): AnsiString;
 
 implementation
 
+function TMidiEvent.GetAnsi: AnsiString;
+begin
+  SetLength(result, Length(Bytes));
+  Move(Bytes[0], result[1], Length(Bytes));
+end;
+
 function TMidiEvent.GetBytes: String;
 var
-  i: integer;
-  c: AnsiChar;
-  s: AnsiString;
+  s: string;
+  p, l: integer;
 begin
-  SetLength(s, Length(Bytes));
-  Move(Bytes[0], s[1], Length(Bytes));
-  result := UTF8ToString(s);
+  s := string(GetAnsi);
+  l := 1;
+  repeat
+    p := Pos('&', Copy(s, l, length(s)));
+    if p > 0 then
+    begin
+      Insert('amp;', s, p + l);
+      l := p + l + 3;
+    end;
+  until p = 0;
+  repeat
+    p := Pos('<', s);
+    if p > 0 then
+    begin
+      Delete(s, p, 1);
+      Insert('&lt;', s, p);
+    end;
+  until p = 0;
+  repeat
+    p := Pos('>', s);
+    if p > 0 then
+    begin
+      Delete(s, p, 1);
+      Insert('&gt;', s, p);
+    end;
+  until p = 0;
+
+  result := UTF8ToString(AnsiString(s));
+end;
+
+function TMidiEvent.GetInt: cardinal;
+var
+  i: integer;
+begin
+  result := 0;
+  for i := 0 to Length(Bytes)-1 do
+    result := (result shl 8) + Bytes[i];
 end;
 
 function BytesToAnsiString(const Bytes: array of byte): AnsiString;
@@ -460,32 +491,6 @@ begin
   SetLength(bytes, 0);
 end;
   
-function TMidiEvent.IsSustain: boolean;
-begin
-  result := ((Event = 11) and (d1 in [64, ControlSustain]));
-end;
-
-function TMidiEvent.MakeNewSustain: boolean;
-var
-  Push: boolean;
-begin
-  result := IsSustain;
-  if not result then
-    exit;
-  Push := IsPush;
-  command := $b0;
-  d1 := ControlSustain;
-  if Push then
-    d2 := 127
-  else
-    d2 := 0;
-end;
-
-function TMidiEvent.IsPush: boolean;
-begin
-  result := IsSustain and (d2 > 0);
-end;
-
 procedure TMidiEvent.SetEvent(c, d1_, d2_: integer);
 begin
   command := c;
@@ -497,18 +502,6 @@ procedure TMidiEvent.AppendByte(b: byte);
 begin
   SetLength(bytes, Length(bytes)+1);
   bytes[Length(bytes)-1] := b;
-end;
-
-procedure TMidiEvent.MakeSustain(Push: boolean);
-begin
-  command := $b0;
-  d1 := ControlSustain;
-  if Push then
-    d2 := 127
-  else
-    d2 := 0;
-  var_len := 0;
-//  MakeNewSustain;
 end;
 
 function MidiOnlyNote(Pitch: byte; Sharp: boolean): string;
@@ -602,39 +595,6 @@ class function TMyMidiStream.IsEndOfTrack(const d: TInt4): boolean;
 begin
   result :=  (d[1] = $ff) and (d[2] = $2f) and (d[3] = 0);
 end;
-
-var
-  sqrt_12_2: double;
-  iPitch: integer;
-  PitchFrequencies: array [0..127] of double;
-
-function PitchFrequenz(Pitch: byte): double;
-begin
-  result := PitchFrequencies[Pitch and $7f];
-{
-  result := 27.500;
-  while Pitch >= 12 do
-  begin
-    result := 2 * result;
-    dec(Pitch, 12);
-  end;
-  while Pitch > 0 do
-  begin
-    result := sqrt_12_2 * result;
-    dec(Pitch);
-  end;
-}
-end;
-
-
-
-
-begin
-  sqrt_12_2 := exp(ln(2)/12.0);
-
-  PitchFrequencies[0] := 27.5;
-  for iPitch := 1 to 127 do
-    PitchFrequencies[iPitch] := sqrt_12_2 * PitchFrequencies[iPitch-1];
 
 end.
 

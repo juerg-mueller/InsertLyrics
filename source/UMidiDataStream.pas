@@ -19,14 +19,8 @@ unit UMidiDataStream;
 interface
 
 uses
-{$if defined(__INSTRUMENTS__)}
-  UInstrument,
-{$endif}
   Classes, SysUtils, windows,
   UMyMidiStream, UEventArray;
-
-const
-  CopyPrep = AnsiString('juerg5524.ch');
 
 type
   TSimpleDataStream = class;
@@ -44,21 +38,10 @@ type
     function ReadMidiHeader(RaiseExcept: boolean = false): boolean;
     function ReadMidiTrackHeader(var Header: TTrackHeader; RaiseExcept: boolean = false): boolean;
     function ReadMidiEvent(var event: TMidiEvent): boolean;
-{$if defined(__INSTRUMENTS__)}
-    function TranslateEvent(var d1: byte;
-                            toDo: eTranslate;
-                            const Instrument: PInstrument): boolean;
-
-    function MakeMidiFile(SimpleFile: TSimpleDataStream;
-                          toDo: eTranslate = nothing;
-                          const Instrument: PInstrument = nil): boolean;
-{$else}
     function MakeMidiFile(SimpleFile: TSimpleDataStream): boolean;
-{$endif}
     function MakeMidiEventsArr(var Events: TMidiEventArray): boolean;
     function MakeMidiTrackEvents(var Tracks: TTrackEventArray): boolean;
     function MakeEventArray(var EventArray: TEventArray; Lyrics: boolean = false): boolean;
-//    function MakePartitur(SimpleFile: TSimpleDataStream): boolean;
   end;
 
   // Zur Analyse von einfachen Text-Files (.txt).
@@ -75,13 +58,7 @@ type
     function ReadSimpleHeader: boolean;
     function ReadSimpleTrackHeader(var TrackHeader: TTrackHeader): boolean;
     function ReadSimpleMidiEvent(var d: TInt4): boolean ;
-{$if defined(__INSTRUMENTS__)}
-    function MakeSimpleFile(MidiFile: TMidiDataStream;
-                            toDo: eTranslate = nothing;
-                            const Instrument: PInstrument = nil): boolean;
-{$else}
     function MakeSimpleFile(MidiFile: TMidiDataStream): boolean;
-{$endif}
     function ReadCross: boolean;
     function NextString: AnsiString;
     function ReadString: AnsiString;
@@ -100,42 +77,16 @@ type
       procedure AppendEvent(command, d1, d2: byte); overload;
       procedure AppendEvents(const Events: TMidiEventArray);
       procedure AppendTrack(const Events: TMidiEventArray);
-      procedure AppendMetaEvent(EventNr: byte; b: AnsiString);
+      procedure AppendMetaEvent(EventNr: byte; b: String);
 
       procedure MakeMidiFile(const Events: TMidiEventArray; Details: PDetailHeader = nil);
       procedure MakeMidiTracksFile(const Tracks: TTrackEventArray);
       procedure MakeMultiTrackMidiFile(const Events: TMidiEventArray; count: integer);
-      procedure MakeOergeliMidiFile(const Events: TMidiEventArray);
   end;
 
-var
-  RunningWine: boolean = false;
 
-{$if defined(__INSTRUMENTS__) and defined(CONSOLE)}
-procedure MidiConverterTest(const FileName: string; var Text: System.Text);
-procedure MidiConverterDirTest(const DirName: string; var Text: System.Text);
-{$endif}
 implementation
 
-
-function IsRunningInWine: boolean;
-type
-  TWineVers = function: PAnsiChar; cdecl;
-var
-  hnd: HModule;
-  pwine_get_version: TWineVers;
-begin
-  hnd := GetModuleHandle('ntdll.dll');
-  pwine_get_version := nil;
-  if (hnd <> 0) then
-    pwine_get_version := GetProcAddress(hnd, 'wine_get_version');
-  result := @pwine_get_version <> nil;
-{$if defined(CONSOLE)}
-  if result then
-    writeln('wine version: ', pwine_get_version);
-{$endif}
-  RunningWine := result;
-end;
 
 constructor TMidiDataStream.Create;
 begin
@@ -242,33 +193,7 @@ begin
   result := true;
 end;
 
-{$if defined(__INSTRUMENTS__)}
-function TMidiDataStream.TranslateEvent(var d1: byte;
-                                        toDo: eTranslate;
-                                        const Instrument: PInstrument): boolean;
-var
-  iCol, i, Index: integer;
-begin
-  iCol := 0;
-  i := -1;
-  if (toDo <> nothing) and (Instrument <> nil) then
-  begin
-    if toDo = toSound then
-      i := Instrument^.GriffToSound(d1, InPull, CrossTest)
-    else
-      i := Instrument^.SoundToGriff(d1, InPull, iCol, Index);
-    if i >= 0 then
-      d1 := i;
-  end;
-  result := i > 0;
-end;
-
-function TMidiDataStream.MakeMidiFile(SimpleFile: TSimpleDataStream;
-  toDo: eTranslate;
-  const Instrument: PInstrument): boolean;
-{$else}
 function TMidiDataStream.MakeMidiFile(SimpleFile: TSimpleDataStream): boolean;
-{$endif}
 var
   d: TInt4;
   d1: byte;
@@ -281,11 +206,6 @@ begin
   SetSize(SimpleFile.Size);
   SimpleFile.Position := 0;
   Position := 0;
-{$if defined(__INSTRUMENTS__)}
-  if Instrument = nil then
-    toDo := nothing;
-{$endif}
-
   if not SimpleFile.ReadSimpleHeader then
     exit;
 
@@ -332,10 +252,6 @@ begin
       Event := d[1] shr 4;
       WriteByte(d[1]);
       d1 := d[2] and $ff;
-{$if defined(__INSTRUMENTS__)}
-      if (Event in [8,9]) then
-        TranslateEvent(d1, toDo, Instrument);
-{$endif}
       WriteByte(d1);
       if Event <> $d then
         WriteByte(d[3]);
@@ -383,7 +299,7 @@ begin
   if (Size - Position + 2 < Header.ChunkSize) then
   begin
 //    if RaiseExcept then
-//      raise Exception.Create('Restliche Dateigröße kleiner als die angegebene Chunkgröße!');
+//      raise Exception.Create('Restliche Dateigrösse kleiner als die angegebene Chunkgrösse!');
   end;
   result := true;
 end;
@@ -460,7 +376,7 @@ begin
       begin
         inc(iTrack);
         SetLength(Tracks, iTrack);
-        SetLength(Tracks[iTrack-1], 10000);
+        SetLength(Tracks[iTrack-1], 100000);
         with Tracks[iTrack-1][iEvent] do
         begin
           Clear;
@@ -469,7 +385,7 @@ begin
         inc(iEvent);
       end;
 
-      if (iEvent > 0) and ((Event.Event in [8, 9]) or Event.IsSustain) then
+      if (iEvent > 0) and (Event.Event in [8, 9]) then
       begin
         if (Event.Event = 9) and (Event.d2 = 0) then
         begin
@@ -487,8 +403,7 @@ begin
           inc(delay, event.var_len);
       end;
     end;
-    if iEvent > 0 then
-      SetLength(Tracks[iTrack-1], iEvent);
+    SetLength(Tracks[iTrack-1], iEvent);
   end;
   result := true;
 end;
@@ -595,7 +510,7 @@ begin
           case event.d1 of
             1: EventArray.Text_ := event.str;
             2: EventArray.copyright := event.str;
-            3: EventArray.TrackName[length(EventArray.TrackName)-1] := event.str;
+            3: EventArray.TrackName[length(EventArray.TrackName)-1] := event.ansi;
             4: EventArray.Instrument := event.str;
             6: EventArray.Maker := event.str;
     {        5,   // Lyrics
@@ -636,97 +551,7 @@ begin
   end;
   result := true;
 end;
-{
-function TMidiDataStream.MakePartitur(SimpleFile: TSimpleDataStream): boolean;
-var
-  d: TInt4;
-  t: integer;
-  TrackHeader_: TTrackHeader;
-  IsFirst: boolean;
-  NextString: AnsiString;
-begin
-  result := false;
-  IsFirst := true;
 
-  Clear;
-  if not SimpleFile.ReadSimpleHeader then
-    exit;
-
-  PartiturHeader := SimpleFile.MidiHeader;
-  PartiturHeader.TrackCount := 0;
-
-  while (SimpleFile.Position + 20 < SimpleFile.Size) do
-  begin
-    if not SimpleFile.ReadSimpleTrackHeader(TrackHeader_) then
-      exit;
-
-    with AppendNewTrack do
-    begin
-      TrackHeader := TrackHeader_;
-      repeat
-        NextString := SimpleFile.NextString;
-        if CompareText(NextString, cSimpleTrackHeader) = 0 then
-          break;
-
-        with AppendNewEvent do
-        begin
-          if (CompareText(NextString, cPush) = 0) or
-             (CompareText(NextString, cPull) = 0) then
-          begin
-            Event.MakeSustain(CompareText(NextString, cPush) = 0);
-            SimpleFile.ReadString;
-            t := SimpleFile.ReadNumber;
-            if t >= 0 then
-              Event.var_len := t;
-            SimpleFile.ReadLine;
-            continue;
-          end;
-          if not SimpleFile.ReadSimpleMidiEvent(d) then
-            exit;
-
-          Event.command := d[1];
-          Event.d1 := d[2];
-          Event.d2 := d[3];
-          Event.var_len := d[0];
-
-          if CompareText(NextString, cSimpleMetaEvent) = 0 then
-          begin
-            for t := 1 to d[3] do
-              AppendByte(SimpleFile.ReadNumber);
-            t := SimpleFile.ReadNumber;
-            if t >= 0 then
-              Event.var_len := t;
-            SimpleFile.ReadLine;
-            if TMyMidiStream.IsEndOfTrack(d) then
-              break;
-            continue;
-          end;
-
-          repeat
-            t := SimpleFile.ReadNumber;
-            if (t < 0) then
-              break;
-            AppendByte(t);
-          until false;
-          if Event.command = $90 then begin
-            Cross := SimpleFile.ReadCross;
-           (* if (event.d1 <= SustainPitch) or (Event.d1 = 47) then
-             begin
-               event.d1 := SustainPitch;
-               event.d2 := 1;
-             end; *)
-          end;
-        end;
-        SimpleFile.Readline;
-      until SimpleFile.NextByte = 0;
-      if IsFirst then
-        FirstTrackInsert;
-      IsFirst := False;
-    end;
-  end;
-  result := true;
-end;
-}
 ////////////////////////////////////////////////////////////////////////////////
 
 function TSimpleDataStream.NextNumber: integer;
@@ -816,11 +641,7 @@ begin
   WritelnString(cSimpleTrackHeader + ' ' + IntToStr(Delta));
 end;
 
-{$if defined(__INSTRUMENTS__)}
-function TSimpleDataStream.MakeSimpleFile(MidiFile: TMidiDataStream; toDo: eTranslate; const Instrument: PInstrument): boolean;
-{$else}
 function TSimpleDataStream.MakeSimpleFile(MidiFile: TMidiDataStream): boolean;
-{$endif}
 var
   TrackHeader: TTrackHeader;
   event: TMidiEvent;
@@ -831,10 +652,6 @@ begin
   SetSize(10000000);
   Position := 0;
   MidiFile.Position := 0;
-{$if defined(__INSTRUMENTS__)}
-  if Instrument = nil then
-    toDo := nothing;
-{$endif}
 
   try
     if not MidiFile.ReadMidiHeader(false) then
@@ -853,10 +670,6 @@ begin
       begin
         if not MidiFile.ReadMidiEvent(event) then
           break;
-
-     {$if defined(__INSTRUMENTS__)}
-        MidiFile.TranslateEvent(event.d1, toDo, Instrument);
-     {$endif}
 
         case event.Event of
           $F: begin
@@ -999,18 +812,20 @@ begin
   self.SetSize(1000000);
 end;
 
-procedure TMidiSaveStream.AppendMetaEvent(EventNr: byte; b: AnsiString);
+procedure TMidiSaveStream.AppendMetaEvent(EventNr: byte; b: String);
 var
-  i,  l: integer;
+  i, l: integer;
+  s: AnsiString;
 begin
-  l := Length(b);
+  s := UTF8Encode(b);
+  l := Length(s);
   WriteByte($ff);
   WriteByte(EventNr);
   WriteByte(l);
   if l > 0 then
   begin
     for i := 1 to l do
-      WriteByte(byte(b[i]));
+      WriteByte(byte(s[i]));
     WriteByte(0);
   end;
 end;
@@ -1045,7 +860,7 @@ begin
   count := GetWord(10) + 1;
   SetWord(count, 10); // increment track count
   if (count = 1) and (Length(Titel) > 0) then
-    AppendMetaEvent(2, AnsiString(Titel));
+    AppendMetaEvent(2, UTF8Encode(Titel));
 end;
 
 procedure TMidiSaveStream.AppendTrackEnd(IsLastTrack: boolean);
@@ -1107,8 +922,7 @@ begin
 
   while i < count do
   begin
-    //if Events[i].command <> 0 then
-      AppendEvent(Events[i]);
+    AppendEvent(Events[i]);
     inc(i);
   end;
 end;
@@ -1116,7 +930,6 @@ end;
 procedure TMidiSaveStream.AppendTrack(const Events: TMidiEventArray);
 begin
   AppendTrackHead;
-//  AppendEvent($c0, $15, 0);   // accordion
   AppendEvents(Events);
   AppendTrackEnd(false);
 end;
@@ -1156,10 +969,6 @@ begin
     delay := 0;
     for i := 0 to count-1 do
     begin
-      if (i = 0) and (Events[0].command = 0) then
-      begin
-//        delay := Events[0].var_len; // mit wave synchronisieren
-      end else
       if (Events[i].Channel = channel) and (Events[i].Event in [8, 9, 11]) then
       begin
         MyEvents[iMyEvent] := Events[i];
@@ -1180,125 +989,12 @@ begin
   end;
   SetLength(MyEvents, 0);
 end;
-
-procedure TMidiSaveStream.MakeOergeliMidiFile(const Events: TMidiEventArray);
-var
-  channel: byte;
-  delay: integer;
-  i, iMyEvent: integer;
-  MyEvents: TMidiEventArray;
-  count: integer;
-begin
-  count := Length(Events);
-  SetHead;
-  SetLength(MyEvents, count);
-  for channel := 0 to 15 do
-  begin
-    iMyEvent := 0;
-    delay := 0;
-    for i := 0 to count-1 do
-    begin
-      if (i = 0) and (Events[0].command = 0) then
-      begin
-        delay := Events[0].var_len; // mit wave synchronisieren
-      end else
-      if (Events[i].Channel = channel) and (Events[i].Event in [8, 9, 11]) then
-      begin
-        MyEvents[iMyEvent] := Events[i];
-        inc(iMyEvent);
-      end else
-      if iMyEvent > 0 then
-        inc(MyEvents[iMyEvent - 1].var_len, Events[i].var_len)
-      else
-        inc(delay, Events[i].var_len);
-    end;
-    if iMyEvent > 0 then begin
-      SetLength(MyEvents, iMyEvent);
-      AppendTrackHead(delay);
-      AppendEvent($c0 + channel, $15, 0);   // accordion
-      AppendEvents(MyEvents);
-      AppendTrackEnd(true);
-    end;
-  end;
-  SetLength(MyEvents, 0);
-end;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
-{$if defined(__INSTRUMENTS__) and defined(CONSOLE)}
-procedure MidiConverterTest(const FileName: string; var Text: System.Text);
-var
-  SimpleFile: TSimpleDataStream;
-  MidiFile, NewMidi: TMidiDataStream;
-  pos: integer;
-  Instrument: PInstrument;
-begin
-  SimpleFile := TSimpleDataStream.Create;
-  MidiFile := TMidiDataStream.Create;
-  NewMidi := TMidiDataStream.Create;
-  try
-    Instrument := @Gwerder_b_Oergeli;
-    writeln(Text, '---> ' + Filename);
-    MidiFile.LoadFromFile(FileName);
-    if not SimpleFile.MakeSimpleFile(MidiFile, toSound, Instrument) then
-    begin
-      writeln(Text, 'File not converted to simple file: ' + Filename);
-      exit;
-    end;
 
-    if not NewMidi.MakeMidiFile(SimpleFile, toGriff, Instrument) then begin
-      writeln(Text, 'File not converted to midi file: ' + Filename);
-      exit;
-    end;
-    pos := NewMidi.Compare(MidiFile);
-    if (pos < NewMidi.Size) or (pos < MidiFile.Size) then
-      writeln(Text, Format('%x (%d) %x  %x', [pos, pos, NewMidi.size, MidiFile.Size]));
-  finally
-    SimpleFile.Free;
-    MidiFile.Free;
-    NewMidi.Free;
-  end;
-end;
-
-procedure MidiConverterDirTest(const DirName: string; var Text: System.Text);
-var
-  SR: TSearchRec;
-  s: string;
-begin
-  if FindFirst(DirName + '*.*', faAnyFile, SR) = 0 then
-  begin
-    repeat
-      s := DirName + SR.Name;
-      if SR.Name[1] = '.' then
-      else
-      if SR.Attr = faDirectory then
-        MidiConverterDirTest(s + '/', Text)
-      else 
-      if SysUtils.ExtractFileExt(SR.Name) = '.mid' then
-        MidiConverterTest(s, Text);
-    until FindNext(SR) <> 0;
-    SysUtils.FindClose(SR);
-  end;
-end;
-{$endif}
-{
-var
-  Stream: TMidiSaveStream;
-  Tracks: TTrackEventArray;
-}
 initialization
-  IsRunningInWine;
-{
-  Stream := TMidiSaveStream.Create;
-  Stream.LoadFromFile('D:/Dokumente/Louis/RS-Player/Ferien am Murtensee.mid');
-  Stream.MakeMidiTrackEvents(Tracks);
-  if Length(Tracks) >= 2 then
-//     TEventArray.ReduceBass(Tracks[1]);
-//  Stream.MakeMidiTracksFile(Tracks);
-//  Stream.SaveToFile('t.mid');
-}
+
 finalization
 
 end.

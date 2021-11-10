@@ -24,13 +24,15 @@ type
 
 
     function AppendChildNode(Name_: string; Value_: string = ''): KXmlNode; overload;
+    function AppendChildNode(Name_: string; Value_: integer): KXmlNode; overload;
     function AddChild(Name_: string; Value_: string = ''): KXmlNode;
 
     procedure InsertChildNode(Index: integer; Child_: KXmlNode);
     procedure AppendChildNode(Child_: KXmlNode); Overload;
     function ChildNodesCount: integer;
 
-    procedure AppendAttr(Name_, Value_: string);
+    procedure AppendAttr(Name_, Value_: string); overload;
+    procedure AppendAttr(Name_: string; Value_: integer); overload;
     function SaveToXmlFile(const FileName: string; Header: string = ''): boolean;
     procedure BuildStream(Stream: TMyMemoryStream; Level: integer; Wln: boolean);
     procedure RemoveChild(Child: KXmlNode);
@@ -40,7 +42,7 @@ type
     function GetAttribute(const Idx: string): string;
     procedure SetAttributes(const Idx: string; const Value: string);
     function LastNode: KXmlNode;
-    function GetXmlValue: string;
+    function GetXmlValue: AnsiString;
 
     //MuseScore
     procedure MergeStaff(var Staff3: KXmlNode);
@@ -51,7 +53,7 @@ type
 
     property Attributes[const Name: string]: string read GetAttribute write SetAttributes;
     property Count: integer read ChildNodesCount;
-    property XmlValue: string read GetXmlValue;
+    property XmlValue: AnsiString read GetXmlValue;
   end;
 
 const
@@ -132,6 +134,11 @@ begin
   ChildNodes[Length(ChildNodes)-1] :=result;
 end;
 
+function KXmlNode.AppendChildNode(Name_: string; Value_: integer): KXmlNode;
+begin
+  result := AppendChildNode(Name_, IntToStr(Value_));
+end;
+
 function KXmlNode.AddChild(Name_: string; Value_: string = ''): KXmlNode;
 begin
   result := AppendChildNode(Name_, Value_);
@@ -144,6 +151,11 @@ begin
   Attr_ := NewXmlAttr(Name_, Value_);
   SetLength(Attrs, Length(Attrs)+1);
   Attrs[Length(Attrs)-1] := Attr_;
+end;
+
+procedure KXmlNode.AppendAttr(Name_: string; Value_: integer);
+begin
+  AppendAttr(Name_, IntToStr(Value_));
 end;
 
 procedure KXmlNode.RemoveChild(Child: KXmlNode);
@@ -303,29 +315,30 @@ begin
   result := true;
 end;
 
-function KXmlNode.GetXmlValue: string;
+function KXmlNode.GetXmlValue: AnsiString;
+var
+  s: string;
 
   procedure Change(from, to_: string);
   var
     p: integer;
   begin
     repeat
-      p := Pos(from, result);
+      p := Pos(from, s);
       if p > 0 then
       begin
-        Delete(result, p, Length(from));
-        Insert(to_, result, p);
+        Delete(s, p, Length(from));
+        Insert(to_, s, p);
       end;
     until p = 0;
   end;
 
 begin
-  result := Value;
+  s := Value;
   Change('&amp;', '&');
   Change('&lt;', '<');
   Change('&gt;', '>');
-
-//  result := UTF8Encode(result);
+  result := UTF8encode(s);
 end;
 
 
