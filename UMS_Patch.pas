@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, ShellApi;
 
 type
   TfrmMS_Patch = class(TForm)
@@ -13,6 +13,8 @@ type
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
     procedure Button1Click(Sender: TObject);
+    procedure WMDropFiles(var Msg: TWMDropFiles); message WM_DROPFILES;
+    procedure FormCreate(Sender: TObject);
   private
     { Private-Deklarationen }
   public
@@ -34,6 +36,41 @@ const
     ('whole', 'half', 'quarter', 'eighth', '16th', '32nd', '64th', '128th');
 
 
+procedure TfrmMS_Patch.WMDropFiles(var Msg: TWMDropFiles);
+var
+  DropH: HDROP;               // drop handle
+  DroppedFileCount: Integer;  // number of files dropped
+  FileNameLength: Integer;    // length of a dropped file name
+  FileName: string;           // a dropped file name
+  i: integer;
+  ext: string;
+begin
+  inherited;
+
+  DropH := Msg.Drop;
+  try
+    DroppedFileCount := DragQueryFile(DropH, $FFFFFFFF, nil, 0);
+    if (DroppedFileCount > 0) then
+    begin
+      for i := 0 to DroppedFileCount-1 do
+      begin
+        FileNameLength := DragQueryFile(DropH, i, nil, 0);
+        SetLength(FileName, FileNameLength);
+        DragQueryFile(DropH, i, PChar(FileName), FileNameLength + 1);
+        ext := ExtractFileExt(Filename);
+        if (LowerCase(ext) = '.mscz') or
+           (LowerCase(ext) = '.mscx') then
+        begin
+          Merge(FileName);
+        end;
+      end;
+    end;
+  finally
+    DragFinish(DropH);
+  end;
+  Msg.Result := 0;
+end;
+
 function GetFraction_(const sLen: string): integer; overload;
 var
   idx: integer;
@@ -44,6 +81,11 @@ begin
       break
     else
       result := result shr 1;
+end;
+
+procedure TfrmMS_Patch.FormCreate(Sender: TObject);
+begin
+  DragAcceptFiles(Self.Handle, true);
 end;
 
 function TfrmMS_Patch.Merge(FileName: string): boolean;
@@ -172,7 +214,7 @@ begin
               for k := 0 to Child.Count-1 do
               begin
                 if Child.ChildNodes[k].Name = 'style' then
-                  style := Child.ChildNodes[k].XmlValue
+                  style := Child.ChildNodes[k].Value
                 else
                 if Child.ChildNodes[k].Name = 'text' then
                   value := Child.ChildNodes[k].XmlValue;
@@ -210,7 +252,7 @@ begin
                       Child1 := Child1.ChildNodes[0];
                       if Child1.Name = 'text' then
                       begin
-                        Event.MakeMetaEvent(5, UTF8Encode(Child1.Value));
+                        Event.MakeMetaEvent(5, Child1.XmlValue);
                         AppendEvent;
                       end;
                     end;
@@ -229,19 +271,12 @@ begin
                 // höchstens ein Lyrics im selben Chord
                 if GetChild('Lyrics', Child, Voice.ChildNodes[j]) then
                 begin
-                {
-                <Lyrics>
-                  <ticks>480</ticks>
-                  <ticks_f>1/4</ticks_f>
-                  <text>Bien</text>
-                  </Lyrics>
-                  }
                   if GetChild('text', Child, Child) then
                   begin
                     if Child.Name = 'text' then
                     begin
                       UsesLyrics := true;
-                      Event.MakeMetaEvent(5, UTF8Encode(Child.XmlValue));
+                      Event.MakeMetaEvent(5, Child.XmlValue);
                       AppendEvent;
                     end;
                   end;
