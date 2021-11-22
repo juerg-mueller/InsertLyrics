@@ -631,48 +631,16 @@ begin
   while i < Length(Events) do
   begin
     Event := Events[i];
-    if (Event.command = $ff) and (Event.d1 = 5) then
+    if Event.Event = 9 then
     begin
-      if Event.var_len > 0 then
+      while (Event.var_len = 0) and (i < Length(Events)) {and
+            (Events[i+1].command = $ff) and (Events[i+1].d1 = 5)} do
       begin
-        dist1 := 0;
-        j1 := i;
-        while (j1 > 0) do
-        begin
-          dec(j1);
-          inc(dist1, Events[j1].var_len);
-          if Events[j1].Event = 9 then
-            break;
-        end;
-        dist2 := 0;
-        j2 := i;
-        while (j2 < Length(Events)) do
-        begin
-          inc(dist2, Events[j2].var_len);
-          if Events[j2].Event = 9 then
-            break;
-          inc(j2);
-        end;
-
-        inc(Events[i-1].var_len, Event.var_len);
-        Event.var_len := 0;
-
-        if dist2 <= dist1 then
-        begin
-          if (j2 < Length(Events)) and (dist2 < 10) then
-          begin
-            dec(j2);
-            for k := i to j2-1 do
-              Events[k] := Events[k+1];
-            Events[j2] := Event;
-          end;
-        end else
-        if (j1 > 1) and (dist1 < 10) then
-        begin
-          for k := i-1 downto j1 do
-            Events[k+1] := Events[k];
-          Events[j1] := Event;
-        end;
+        Events[i] := Events[i+1];
+        inc(Event.var_len, Events[i].var_len);
+        Events[i].var_len := 0;
+        Events[i+1] := Event;
+        inc(i);
       end;
     end;
     inc(i);

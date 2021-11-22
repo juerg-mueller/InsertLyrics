@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, System.Zip, Dialogs, Forms, Windows,
-  UMyMemoryStream, UXmlNode;
+  UMyMemoryStream, UXmlNode, Classes;
 
 type
   // xml Grammar:
@@ -540,6 +540,7 @@ var
   Zip_: TZipFile;
   outp: TBytes;
   ext: string;
+  i: integer;
 begin
   result := false;
   if not FileExists(FileName) then
@@ -558,17 +559,24 @@ begin
       Zip_ := TZipFile.Create;
       try
         Zip_.Open(Filename, zmRead);
-        SetLength(Filename, Length(FileName)-Length(ext));
         if ext = '.mscz' then
           ext := '.mscx'
         else
-          ext := 'xml';
-        FileName := FileName + ext;
-        Zip_.Read(ExtractFileName(FileName), Outp);
+          ext := '.xml';
+        for i := 0 to Length(Zip_.FileNames)-1 do
+          if ExtractFileExt(Zip_.FileNames[i]) = ext then
+          begin
+            FileName := Zip_.FileNames[i];
+            result := true;
+            break;
+          end;
+        if result then
+          Zip_.Read(FileName, Outp);
       finally
         Zip_.Free;
       end;
-      result := Parser.ParseStream(Outp, Root);
+      if result then
+        result := Parser.ParseStream(Outp, Root);
       SetLength(Outp, 0);
     end;
   finally

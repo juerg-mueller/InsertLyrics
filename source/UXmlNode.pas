@@ -36,7 +36,10 @@ type
     function SaveToXmlFile(const FileName: string; Header: string = ''): boolean;
     procedure BuildStream(Stream: TMyMemoryStream; Level: integer; Wln: boolean);
     procedure RemoveChild(Child: KXmlNode);
+    function GetChildIndex(Child: KXmlNode): integer;
     procedure PurgeChild(Index: integer);
+    function HasChild(Name_: string): KXmlNode;
+    function DeleteAttribute(Attribute: string): boolean;
     function AttributeIdx(Attribute: string): integer;
     function HasAttribute(Attribute: string): boolean;
     function GetAttribute(const Idx: string): string;
@@ -158,15 +161,21 @@ begin
   AppendAttr(Name_, IntToStr(Value_));
 end;
 
-procedure KXmlNode.RemoveChild(Child: KXmlNode);
-var
-  i: integer;
+function KXmlNode.GetChildIndex(Child: KXmlNode): integer;
 begin
-  i := 0;
-  while (i < Length(ChildNodes)) and (ChildNodes[i] <> Child) do
-    inc(i);
+  if Child = nil then
+  begin
+    result := -1;
+    exit;
+  end;
+  result := Length(ChildNodes)-1;
+  while (result >= 0) and (ChildNodes[result] <> Child) do
+    dec(result);
+end;
 
-  PurgeChild(i);
+procedure KXmlNode.RemoveChild(Child: KXmlNode);
+begin
+  PurgeChild(GetChildIndex(Child));
 end;
 
 procedure KXmlNode.PurgeChild(Index: integer);
@@ -179,6 +188,21 @@ begin
     for i := Index+1 to Count-1 do
       ChildNodes[i-1] := ChildNodes[i];
     SetLength(ChildNodes, Count-1);
+  end;
+end;
+
+function KXmlNode.HasChild(Name_: string): KXmlNode;
+var
+  i: integer;
+begin
+  result := nil;
+  for i := 0 to Count-1 do
+  begin
+    if ChildNodes[i].Name = Name_ then
+    begin
+      result := ChildNodes[i];
+      break;
+    end;
   end;
 end;
 
@@ -202,6 +226,27 @@ begin
   i := AttributeIdx(Idx);
   if i >= 0 then
     result := Attrs[i].Value;
+end;
+
+function KXmlNode.DeleteAttribute(Attribute: string): boolean;
+var
+  i: integer;
+begin
+  result := false;
+  i := 0;
+  while (i < Length(Attrs)) and not result do
+    if Attrs[i].Name = Attribute then
+    begin
+      Attrs[i].Free;
+      result := true;
+      while i < Length(Attrs)-1 do
+      begin
+        Attrs[i] := Attrs[i+1];
+        inc(i);
+      end;
+      SetLength(Attrs, Length(Attrs)-1);
+    end else
+      inc(i);
 end;
 
 procedure KXmlNode.SetAttributes(const Idx: string; const Value: string);
