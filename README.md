@@ -11,3 +11,5 @@ InsertLyrics ist ein Workaround, bis MuseScore die Funktionalität enthält.
 Kontakt unter: https://musescore.org/de/node/326233
 
 11/10/2021: International Unicode improvements
+
+11/22/2021: More improvents and some corrections. 
