@@ -52,7 +52,6 @@ object frmMS_Patch: TfrmMS_Patch
     ParentFont = False
     ReadOnly = True
     TabOrder = 0
-    ExplicitWidth = 593
   end
   object Button1: TButton
     Left = 200

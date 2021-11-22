@@ -91,16 +91,19 @@ end;
 function TfrmMS_Patch.Merge(FileName: string): boolean;
 var
   i, j, k, d: integer;
-  Root, Score, Staff, Measure, Voice, Child: KXmlNode;
+  Root, Score, Staff, Measure, Voice, Chord, Child, Child1, Child2: KXmlNode;
   Event: TMidiEvent;
   Events: TEventArray;
   MidiEvents: TMidiEventArray;
-  delta: integer;
+  delta, no: integer;
   duration, dots: string;
   style, value: string;
   Title, Composer, Copyright: string;
   iLyricsTrack, iScore: integer;
   UsesLyrics: boolean;
+  Hyphen: boolean;
+  s: string;
+  Ext: string;
 
   procedure AppendEvent;
   begin
@@ -121,24 +124,15 @@ var
   end;
 
   function GetChild(Name: string; var Child: KXmlNode; Parent: KXmlNode): boolean;
-  var
-    k: integer;
   begin
-    k := 0;
-    result := false;
-    Child := nil;
-
-    while not result and (Parent <> nil) and (k < Parent.Count) do
-    begin
-      Child := Parent.ChildNodes[k];
-      inc(k);
-      result := Child.Name = Name;
-    end;
+    Child := Parent.hasChild(Name);
+    result := Child <> nil;
   end;
 
 begin
   result := false;
-  SetLength(FileName, Length(FileName) - Length(ExtractFileExt(FileName)));
+  Ext := ExtractFileExt(FileName);
+  SetLength(FileName, Length(FileName) - Length(Ext));
 
   if not FileExists(FileName + '.mid') then
   begin
@@ -174,6 +168,11 @@ begin
     exit;
   end;
 
+  if (Ext = '.mscx') or (Ext = '.mscz') then
+  begin
+    if not KXmlParser.ParseFile(FileName + Ext, Root) then
+      exit;
+  end else
   if not KXmlParser.ParseFile(FileName + '.mscz', Root) and
      not KXmlParser.ParseFile(FileName + '.mscx', Root) then
     exit;
@@ -237,51 +236,50 @@ begin
           begin
             for j := 0 to Voice.Count-1 do
             begin
-    {$if false}
               // berücksichtigt mehrere Lyrics im selben Chord
-              if Voice.ChildNodes[j].Name = 'Chord' then
+              Chord := Voice.ChildNodes[j];
+              if (Chord.Name = 'Chord') or
+                 (Chord.Name = 'Rest') then
               begin
-                Child := Voice.ChildNodes[j];
-                for k := 0 to Child.Count-1 do
-                begin
-                  Child1 := Child.ChildNodes[k];
-                  if Child1.Name = 'Lyrics' then
+                if GetChild('duration', Child, Voice.ChildNodes[j]) or
+                   GetChild('durationType', Child, Voice.ChildNodes[j]) then
                   begin
-                    if (Child1.Count = 1) then
+                  duration := Child.Value;
+                  dots := '';
+                  if GetChild('dots', Child, Chord) then
+                    dots := Child.Value;
+
+                  Child := Voice.ChildNodes[j];
+                  no := 0;
+                  for k := 0 to Child.Count-1 do
+                  begin
+                    Child1 := Child.ChildNodes[k];
+                    if Child1.Name = 'Lyrics' then
                     begin
-                      Child1 := Child1.ChildNodes[0];
-                      if Child1.Name = 'text' then
+                      Child2 := Child1.HasChild('no');
+                      if Child2 <> nil then
+                        while no < StrToIntDef(Child2.Value, 0) do
+                        begin
+                          Event.MakeMetaEvent(5, '');
+                          AppendEvent;
+                          inc(no);
+                        end;
+                      inc(no);
+                      hyphen := GetChild('syllabic', Child2, Child1);
+                      if hyphen then
+                        hyphen := Child2.Value = 'begin';
+                      if GetChild('text', Child2, Child1) then
                       begin
-                        Event.MakeMetaEvent(5, Child1.XmlValue);
+                        s := Child2.XmlValue;
+                        if not hyphen then
+                          s := s + ' ';
+                        Event.MakeMetaEvent(5, UTF8encode(s));
                         AppendEvent;
+                        UsesLyrics := true;
                       end;
                     end;
                   end;
                 end;
-              end;
-    {$endif}
-              if GetChild('duration', Child, Voice.ChildNodes[j]) or
-                 GetChild('durationType', Child, Voice.ChildNodes[j]) then
-              begin
-                duration := Child.Value;
-                dots := '';
-                if GetChild('dots', Child, Voice.ChildNodes[j]) then
-                  dots := Child.Value;
-    {$if true}
-                // höchstens ein Lyrics im selben Chord
-                if GetChild('Lyrics', Child, Voice.ChildNodes[j]) then
-                begin
-                  if GetChild('text', Child, Child) then
-                  begin
-                    if Child.Name = 'text' then
-                    begin
-                      UsesLyrics := true;
-                      Event.MakeMetaEvent(5, Child.XmlValue);
-                      AppendEvent;
-                    end;
-                  end;
-                end;
-    {$endif}
                 if Pos('/', duration) = 0 then
                 begin
                   d := GetFraction_(duration);
