@@ -55,6 +55,7 @@ type
     procedure SetNewTrackCount(Count: integer);
     function TrackCount: integer;
     function GetHeaderTrack: TMidiEventArray;
+    procedure InsertTrack(Index: integer; Name: string; const MidiEvents: TMidiEventArray);
 
     property TrackName: TAnsiStringArray read TrackName_;
     property TrackArr: TTrackEventArray read TrackArr_;
@@ -76,6 +77,8 @@ type
     class function MakeSingleTrack(var MidiEventArray: TMidiEventArray; const TrackArr: TTrackEventArray): boolean; overload;
     class procedure MoveLyrics(var Events: TMidiEventArray);
     class procedure InsertSecond(var Events: TMidiEventArray; const Event: TMidiEvent);
+    class procedure CopyEventArray(var OutArr: TMidiEventArray; const InArr: TMidiEventArray);
+
   end;
 
 
@@ -325,6 +328,23 @@ begin
     TEventArray.Move_var_len(TrackArr[i]);
 end;
 
+procedure TEventArray.InsertTrack(Index: integer; Name: string; const MidiEvents: TMidiEventArray);
+var
+  i: integer;
+begin
+  if (Index >= 0) and (Index <= Length(TrackArr)) then
+  begin
+    SetLength(TrackArr_, Length(TrackArr)+1);
+    SetLength(TrackName_, Length(TrackArr)+1);
+    for i := Length(TrackArr)-2 downto Index do
+    begin
+      CopyEventArray(TrackArr_[i+1], TrackArr[i]);
+      TrackName_[i+1] := TrackName[i];
+    end;
+    TrackName_[Index] := Name;
+    CopyEventArray(TrackArr_[Index], MidiEvents);
+  end;
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -647,7 +667,7 @@ begin
   end;
 end;
 
-procedure CopyEventArray(var OutArr: TMidiEventArray; const InArr: TMidiEventArray);
+class procedure TEventArray.CopyEventArray(var OutArr: TMidiEventArray; const InArr: TMidiEventArray);
 var
   i: integer;
 begin
