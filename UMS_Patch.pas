@@ -12,6 +12,7 @@ type
     Button1: TButton;
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
+    cbxKaraokeTrack: TCheckBox;
     procedure Button1Click(Sender: TObject);
     procedure WMDropFiles(var Msg: TWMDropFiles); message WM_DROPFILES;
     procedure FormCreate(Sender: TObject);
@@ -57,9 +58,11 @@ begin
         FileNameLength := DragQueryFile(DropH, i, nil, 0);
         SetLength(FileName, FileNameLength);
         DragQueryFile(DropH, i, PChar(FileName), FileNameLength + 1);
-        ext := ExtractFileExt(Filename);
-        if (LowerCase(ext) = '.mscz') or
-           (LowerCase(ext) = '.mscx') then
+        ext := LowerCase(ExtractFileExt(Filename));
+        if (ext = '.mscz') or
+           (ext = '.mscx') or
+           (ext = '.mid') or
+           (ext = '.midi') then
         begin
           Merge(FileName);
         end;
@@ -104,6 +107,9 @@ var
   Hyphen: boolean;
   s: string;
   Ext: string;
+  InTuplet: boolean;
+  tupletFactor: double;
+  strictKaraoke: boolean;
 
   procedure AppendEvent;
   begin
@@ -131,6 +137,7 @@ var
 
 begin
   result := false;
+  strictKaraoke := cbxKaraokeTrack.Checked;
   Ext := ExtractFileExt(FileName);
   SetLength(FileName, Length(FileName) - Length(Ext));
 
@@ -168,7 +175,8 @@ begin
     exit;
   end;
 
-  if (Ext = '.mscx') or (Ext = '.mscz') then
+  if ((Ext = '.mscx') or (Ext = '.mscz')) and
+     FileExists(FileName + Ext) then
   begin
     if not KXmlParser.ParseFile(FileName + Ext, Root) then
       exit;
@@ -198,6 +206,9 @@ begin
     Staff := Score.ChildNodes[iScore];
     if Staff.Name = 'Staff' then
     begin
+      if UsesLyrics then
+        break;
+
       for i := 0 to Staff.Count-1 do
       begin
         Measure := Staff.ChildNodes[i];
@@ -238,6 +249,22 @@ begin
             begin
               // berücksichtigt mehrere Lyrics im selben Chord
               Chord := Voice.ChildNodes[j];
+              if Chord.Name = 'Tuplet' then
+              begin
+                InTuplet := false;
+                if GetChild('normalNotes', Child, Chord) and
+                   GetChild('actualNotes', Child1, Chord) and
+                   (StrToIntDef(Child1.Value, 0) > 0) then
+                begin
+                  InTuplet := true;
+                  tupletFactor := double(StrToIntDef(Child.Value, 1)) /
+                                  double(StrToInt(Child1.Value));
+                end;
+              end else
+              if Chord.Name = 'endTuplet' then
+              begin
+                InTuplet := false;
+              end else
               if (Chord.Name = 'Chord') or
                  (Chord.Name = 'Rest') then
               begin
@@ -254,11 +281,14 @@ begin
                   for k := 0 to Child.Count-1 do
                   begin
                     Child1 := Child.ChildNodes[k];
+                    if strictKaraoke and (no > 0) then
+                      break;
                     if Child1.Name = 'Lyrics' then
                     begin
                       Child2 := Child1.HasChild('no');
                       if Child2 <> nil then
-                        while no < StrToIntDef(Child2.Value, 0) do
+                        while not strictKaraoke and
+                              (no < StrToIntDef(Child2.Value, 0)) do
                         begin
                           Event.MakeMetaEvent(5, '');
                           AppendEvent;
@@ -271,10 +301,26 @@ begin
                       if GetChild('text', Child2, Child1) then
                       begin
                         s := Child2.XmlValue;
-                        if not hyphen then
+                        if not hyphen and (s <> '') then
                           s := s + ' ';
-                        Event.MakeMetaEvent(5, UTF8encode(s));
+                        if strictKaraoke then
+                          Event.MakeMetaEvent(1, UTF8encode(s))
+                        else
+                          Event.MakeMetaEvent(5, UTF8encode(s));
                         AppendEvent;
+                        if not UsesLyrics and
+                           strictKaraoke then
+                        begin
+                          Event.MakeMetaEvent(3, 'Soft Karaoke');
+                          InsertFirstEvent;
+                          Event.MakeMetaEvent(1, '@KMIDI KARAOKE FILE');
+                          InsertFirstEvent;
+                          if Events.Copyright <> '' then
+                          begin
+                            Event.MakeMetaEvent(1, '@C' + UTF8encode(Events.Copyright));
+                            InsertFirstEvent;
+                          end;
+                        end;
                         UsesLyrics := true;
                       end;
                     end;
@@ -287,6 +333,8 @@ begin
                     duration := '1/' + IntToStr(d);
                 end;
                 delta := Events.DetailHeader.GetChordTicks(duration, dots);
+                if InTuplet then
+                  delta := round(tupletFactor*delta);
                 inc(MidiEvents[Length(MidiEvents)-1].var_len, delta);
               end;
             end;
@@ -297,11 +345,13 @@ begin
       if (iLyricsTrack < Length(Events.TrackArr)) and
          UsesLyrics then
       begin
-        for k := 0 to Length(Events.TrackArr[iLyricsTrack])-1 do
-          Events.TrackArr[iLyricsTrack][k].var_len := Events.DetailHeader.GetRaster(Events.TrackArr[iLyricsTrack][k].var_len);
-
-        TEventArray.MergeTracks(Events.TrackArr[iLyricsTrack], MidiEvents);
-        TEventArray.MoveLyrics(Events.TrackArr[iLyricsTrack]);
+        if strictKaraoke then
+        begin
+          Events.InsertTrack(0, 'Lyrics', MidiEvents);
+        end else begin
+          TEventArray.MergeTracks(Events.TrackArr[iLyricsTrack], MidiEvents);
+          TEventArray.MoveLyrics(Events.TrackArr[iLyricsTrack]);
+        end;
       end;
       inc(iLyricsTrack);
     end;

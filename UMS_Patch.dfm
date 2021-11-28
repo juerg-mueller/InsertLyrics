@@ -2,7 +2,7 @@ object frmMS_Patch: TfrmMS_Patch
   Left = 0
   Top = 0
   Caption = 'Inserts MuseScore Lyrics into Midi File'
-  ClientHeight = 254
+  ClientHeight = 280
   ClientWidth = 535
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,7 +16,7 @@ object frmMS_Patch: TfrmMS_Patch
   OnCreate = FormCreate
   DesignSize = (
     535
-    254)
+    280)
   PixelsPerInch = 96
   TextHeight = 13
   object Memo1: TMemo
@@ -58,10 +58,19 @@ object frmMS_Patch: TfrmMS_Patch
     Top = 208
     Width = 131
     Height = 25
-    Anchors = [akLeft, akTop, akRight, akBottom]
+    Anchors = [akLeft, akTop, akRight]
     Caption = 'Open to Insert Lyrics'
     TabOrder = 1
     OnClick = Button1Click
+  end
+  object cbxKaraokeTrack: TCheckBox
+    Left = 24
+    Top = 248
+    Width = 137
+    Height = 17
+    Alignment = taLeftJustify
+    Caption = 'Lyrics in karaoke track'
+    TabOrder = 2
   end
   object OpenDialog1: TOpenDialog
     Filter = 'MuseScore Files|*.mscz;*.mscx'
