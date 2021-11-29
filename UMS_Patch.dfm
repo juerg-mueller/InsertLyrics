@@ -2,7 +2,7 @@ object frmMS_Patch: TfrmMS_Patch
   Left = 0
   Top = 0
   Caption = 'Inserts MuseScore Lyrics into Midi File'
-  ClientHeight = 280
+  ClientHeight = 255
   ClientWidth = 535
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,14 +16,29 @@ object frmMS_Patch: TfrmMS_Patch
   OnCreate = FormCreate
   DesignSize = (
     535
-    280)
+    255)
   PixelsPerInch = 96
   TextHeight = 13
+  object Label1: TLabel
+    Left = 144
+    Top = 136
+    Width = 249
+    Height = 24
+    Alignment = taCenter
+    Anchors = [akLeft, akTop, akRight]
+    Caption = 'Now drop .mscz/x file here.'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clRed
+    Font.Height = -20
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
+  end
   object Memo1: TMemo
     Left = 0
     Top = 0
     Width = 535
-    Height = 193
+    Height = 105
     TabStop = False
     Align = alTop
     Alignment = taCenter
@@ -45,40 +60,34 @@ object frmMS_Patch: TfrmMS_Patch
       
         '- Export the score as midi file with same name as the mscz / msc' +
         'x file'
-      ''
-      ''
-      'Now, use the button "Open to Insert Lyrics" or'
-      'drop .mscz/x file here.')
+      '')
     ParentFont = False
     ReadOnly = True
     TabOrder = 0
   end
-  object Button1: TButton
-    Left = 200
-    Top = 208
-    Width = 131
-    Height = 25
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Open to Insert Lyrics'
-    TabOrder = 1
-    OnClick = Button1Click
-  end
   object cbxKaraokeTrack: TCheckBox
-    Left = 24
-    Top = 248
-    Width = 137
-    Height = 17
+    Left = 132
+    Top = 203
+    Width = 272
+    Height = 20
     Alignment = taLeftJustify
-    Caption = 'Lyrics in karaoke track'
-    TabOrder = 2
+    Anchors = [akLeft, akTop, akRight]
+    Caption = 'Lyrics in karaoke track (kar format)'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -16
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
+    TabOrder = 1
   end
   object OpenDialog1: TOpenDialog
     Filter = 'MuseScore Files|*.mscz;*.mscx'
     Left = 24
-    Top = 168
+    Top = 8
   end
   object SaveDialog1: TSaveDialog
     Left = 480
-    Top = 168
+    Top = 16
   end
 end

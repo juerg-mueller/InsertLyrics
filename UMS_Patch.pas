@@ -9,10 +9,10 @@ uses
 type
   TfrmMS_Patch = class(TForm)
     Memo1: TMemo;
-    Button1: TButton;
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
     cbxKaraokeTrack: TCheckBox;
+    Label1: TLabel;
     procedure Button1Click(Sender: TObject);
     procedure WMDropFiles(var Msg: TWMDropFiles); message WM_DROPFILES;
     procedure FormCreate(Sender: TObject);
