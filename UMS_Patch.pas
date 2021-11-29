@@ -196,6 +196,7 @@ begin
   Title := '';
   Composer := '';
   Copyright := '';
+  InTuplet := false;
 
   for iScore := 0 to Score.Count-1 do
   begin
@@ -303,10 +304,7 @@ begin
                         s := Child2.XmlValue;
                         if not hyphen and (s <> '') then
                           s := s + ' ';
-                        if strictKaraoke then
-                          Event.MakeMetaEvent(1, UTF8encode(s))
-                        else
-                          Event.MakeMetaEvent(5, UTF8encode(s));
+                        Event.MakeMetaEvent(5, UTF8encode(s));
                         AppendEvent;
                         if not UsesLyrics and
                            strictKaraoke then
