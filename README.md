@@ -14,4 +14,4 @@ Kontakt unter: https://musescore.org/de/node/326233
 
 11/22/2021: More improvents and some corrections. 
 
-11/28/21: Supports tuplets (not yet tested)
+11/28/21: Supports tuplets 
