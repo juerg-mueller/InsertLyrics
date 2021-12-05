@@ -197,6 +197,7 @@ begin
   Composer := '';
   Copyright := '';
   InTuplet := false;
+  tupletFactor := 1.0;
 
   for iScore := 0 to Score.Count-1 do
   begin
@@ -282,19 +283,24 @@ begin
                   for k := 0 to Child.Count-1 do
                   begin
                     Child1 := Child.ChildNodes[k];
-                    if strictKaraoke and (no > 0) then
-                      break;
                     if Child1.Name = 'Lyrics' then
                     begin
                       Child2 := Child1.HasChild('no');
                       if Child2 <> nil then
+                      begin
+                        // für Karaoke wird nur die erste Textzeile genommen,
+                        // alse kein "no"
+                        if strictKaraoke then
+                          break;
                         while not strictKaraoke and
                               (no < StrToIntDef(Child2.Value, 0)) do
                         begin
-                          Event.MakeMetaEvent(5, '');
+                          // Muss mindestens ein Zeichen enthalten!
+                          Event.MakeMetaEvent(5, ' ');
                           AppendEvent;
                           inc(no);
                         end;
+                      end;
                       inc(no);
                       hyphen := GetChild('syllabic', Child2, Child1);
                       if hyphen then

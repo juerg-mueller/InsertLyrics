@@ -22,7 +22,7 @@ object frmMS_Patch: TfrmMS_Patch
   object Label1: TLabel
     Left = 144
     Top = 136
-    Width = 249
+    Width = 244
     Height = 24
     Alignment = taCenter
     Anchors = [akLeft, akTop, akRight]
