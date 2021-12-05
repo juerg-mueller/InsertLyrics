@@ -284,7 +284,6 @@ begin
   if Text_ <> '' then
   begin
     AppendMetaEvent(1, UTF8encode(Text_));
-    AppendMetaEvent($10, Text_);
   end;
   if Copyright <> '' then
     AppendMetaEvent(2, UTF8encode(Copyright));
@@ -341,7 +340,7 @@ begin
       CopyEventArray(TrackArr_[i+1], TrackArr[i]);
       TrackName_[i+1] := TrackName[i];
     end;
-    TrackName_[Index] := Name;
+    TrackName_[Index] := AnsiString(Name);
     CopyEventArray(TrackArr_[Index], MidiEvents);
   end;
 end;
@@ -525,6 +524,7 @@ begin
 
   Offset := 0;
   k := 0;
+  SetLength(Events1, 1);
   if (MidiEvent(0).command = 0) and
      (MidiEvent(1).command = 0) then
   begin
@@ -550,12 +550,9 @@ begin
         if Ev.var_len > 0 then
           inc(iOffset[i], Ev.var_len);
         Ev.var_len := 0;
+        SetLength(Events1, k+1);
         Events1[k] := Ev;
-        Events1[k+1].Clear;
         inc(iEvent[i]);
-        if (i = 1) and (iEvent[i] = 82) then
-          k := k;
-
         inc(k);
       end;
     end;
@@ -572,13 +569,12 @@ begin
       inc(Events1[k-1].var_len, iOffset[i] - Offset);
     while Valid(i) do
     begin
+      SetLength(Events1, k+1);
       Events1[k] := Events[i]^[iEvent[i]];
       inc(k);
       inc(iEvent[i]);
     end;
   end;
-
-  SetLength(Events1, k);
   SetLength(temp, 0);
 end;
 
@@ -643,8 +639,7 @@ end;
 
 class procedure TEventArray.MoveLyrics(var Events: TMidiEventArray);
 var
-  i, j1, j2, k: integer;
-  dist1, dist2: integer;
+  i: integer;
   Event: TMidiEvent;
 begin
   i := 0;
@@ -653,8 +648,8 @@ begin
     Event := Events[i];
     if Event.Event = 9 then
     begin
-      while (Event.var_len = 0) and (i < Length(Events)) {and
-            (Events[i+1].command = $ff) and (Events[i+1].d1 = 5)} do
+      while (Event.var_len = 0) and (i < Length(Events)) and
+            (Events[i+1].command = $ff) and (Events[i+1].d1 = 5) do
       begin
         Events[i] := Events[i+1];
         inc(Event.var_len, Events[i].var_len);
