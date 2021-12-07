@@ -1,4 +1,17 @@
-﻿unit UMS_Patch;
+﻿// Damit die Zuordnung Notensystem -- Midi-Track eindeutig ist, müssen die
+// die Namen der Notensysteme eindeutig gewählt werden. Die Tracks erhalten
+// dieselben Namen wie die Notensysteme.
+
+// Resultat (Midi-Datei) mit verschiedenen Programme einlesen:
+//
+// Finale hat keine Lyrics-Unterstützung
+//
+// PrimusFree liest es fast korrekt ein: Keine UTF-8-Unterstützung es fehlen Silben
+//
+// Sibelius liest die Lyrics ein, setzt aber alle Strophen in dieselbe Linie
+//
+// MuseScore: Nur jeweils die erste Strophe und weist die Lyrics nicht dem richtigen Notensystem zu
+unit UMS_Patch;
 
 interface
 
@@ -28,6 +41,8 @@ var
 implementation
 
 {$R *.dfm}
+
+{$define _TEST}
 
 uses
   UMyMidiStream, UMidiDataStream, UEventArray, UXmlParser, UXmlNode;
@@ -61,8 +76,7 @@ begin
         ext := LowerCase(ExtractFileExt(Filename));
         if (ext = '.mscz') or
            (ext = '.mscx') or
-           (ext = '.mid') or
-           (ext = '.midi') then
+           (ext = '.mid') then
         begin
           Merge(FileName);
         end;
@@ -97,11 +111,12 @@ var
   Root, Score, Staff, Measure, Voice, Chord, Child, Child1, Child2: KXmlNode;
   Event: TMidiEvent;
   Events: TEventArray;
-  MidiEvents: TMidiEventArray;
+  iMidiEvent, iMidiLength: integer;
+  MidiEvents: array of TMidiEventArray;
   delta, no: integer;
   duration, dots: string;
   style, value: string;
-  Title, Composer, Copyright: string;
+  Title, Composer, Subtitle: string;
   iLyricsTrack, iScore: integer;
   UsesLyrics: boolean;
   Hyphen: boolean;
@@ -110,23 +125,29 @@ var
   InTuplet: boolean;
   tupletFactor: double;
   strictKaraoke: boolean;
+  nameCount: integer;
+  trackName: array of string;
+  instrumentName: array of string;
+  vers: double;
 
   procedure AppendEvent;
   begin
-    SetLength(MidiEvents, Length(MidiEvents)+1);
-    MidiEvents[Length(MidiEvents)-1] := Event;
+    inc(iMidiLength);
+    SetLength(MidiEvents[iMidiEvent-1], iMidiLength);
+    MidiEvents[iMidiEvent-1][iMidiLength-1] := Event;
   end;
 
   procedure InsertFirstEvent;
   var
     i: integer;
   begin
-    SetLength(MidiEvents, Length(MidiEvents)+1);
-    for i := Length(MidiEvents)-2 downto 1 do
-      MidiEvents[i+1] := MidiEvents[i];
-    MidiEvents[1] := Event;
-    MidiEvents[1].var_len := MidiEvents[0].var_len;
-    MidiEvents[0].var_len := 0;
+    inc(iMidiLength);
+    SetLength(MidiEvents[iMidiEvent-1], iMidiLength);
+    for i := iMidiLength-2 downto 1 do
+      MidiEvents[iMidiEvent-1][i+1] := MidiEvents[iMidiEvent-1][i];
+    MidiEvents[iMidiEvent-1][1] := Event;
+    MidiEvents[iMidiEvent-1][1].var_len := MidiEvents[iMidiEvent-1][0].var_len;
+    MidiEvents[iMidiEvent-1][0].var_len := 0;
   end;
 
   function GetChild(Name: string; var Child: KXmlNode; Parent: KXmlNode): boolean;
@@ -158,14 +179,9 @@ begin
   end;
 
   Events.DetailHeader.smallestFraction := 64; // 64th
-  iLyricsTrack := 0;
-  while iLyricsTrack < Length(Events.TrackArr) do
-    if TEventArray.HasSound(Events.TrackArr[iLyricsTrack]) then
-      break
-    else
-      inc(iLyricsTrack);
-
-
+{$ifdef TEST}
+  Events.SaveSimpleMidiToFile(FileName + '.txt');
+{$endif}
   if not FileExists(FileName + '.mscz') and
      not FileExists(FileName + '.mscx') then
   begin
@@ -185,8 +201,20 @@ begin
      not KXmlParser.ParseFile(FileName + '.mscx', Root) then
     exit;
 
-  Score := Root.ChildNodes[Root.Count-1];
-  if (Score.Name <> 'Score') or
+  s := Root.Attributes['version'];
+  vers := StrToFloatDef(s, 1);
+  if s = '' then
+  begin
+    Application.MessageBox('Error in MuseScore file!', 'Error');
+    exit;
+  end;
+  if (vers < 3.0) then
+  begin
+    Application.MessageBox(PChar('MuseScore version ' + IntToStr(trunc(vers)) + ' is not supported!'), 'Error');
+    exit;
+  end;
+  GetChild('Score', Score, Root);
+  if (Score = nil) or
      not GetChild('Staff', Staff, Score) then
   begin
     Application.MessageBox('Error in MuseScore file!', 'Error');
@@ -195,22 +223,56 @@ begin
 
   Title := '';
   Composer := '';
-  Copyright := '';
+  Subtitle := '';
   InTuplet := false;
   tupletFactor := 1.0;
 
+  SetLength(trackName, 0);
+  SetLength(instrumentName, 0);
+  nameCount := 0;
+
+  iLyricsTrack := 0;
+  iMidiEvent := 0;
+  iMidiLength := 0;
+  SetLength(MidiEvents, 0);
   for iScore := 0 to Score.Count-1 do
   begin
-    SetLength(MidiEvents, 0);
-    Event.Clear;
-    AppendEvent;
-    UsesLyrics := false;
     Staff := Score.ChildNodes[iScore];
+    if Staff.Name = 'Part' then
+    begin
+      inc(nameCount);
+      SetLength(trackName, nameCount);
+      SetLength(instrumentName, nameCount);
+      for i := 0 to Staff.Count-1 do
+      begin
+        Child := Staff.ChildNodes[i];
+        if Child.Name = 'trackName' then
+          trackName[nameCount-1] := Child.Value
+        else
+        if Child.Name = 'Instrument' then
+          instrumentName[nameCount-1] := Child.Attributes['id'];
+      end;
+    end else
     if Staff.Name = 'Staff' then
     begin
-      if UsesLyrics then
-        break;
-
+      iMidiLength := 0;
+      inc(iMidiEvent);
+      SetLength(MidiEvents, iMidiEvent);
+      Event.Clear;
+      AppendEvent;
+      UsesLyrics := false;
+      i := StrToIntDef(Staff.Attributes['id'], -1);
+      if (i > 0) and (i <= Length(trackName)) then
+      begin
+        dec(i);
+        s := trackName[i];
+        for i := 0 to Length(Events.TrackName)-1 do
+          if (Events.TrackName[i] = s) and (s <> '') then
+           begin
+             iLyricsTrack := i;
+             break;
+           end;
+      end;
       for i := 0 to Staff.Count-1 do
       begin
         Measure := Staff.ChildNodes[i];
@@ -237,8 +299,8 @@ begin
               if style = 'Composer' then
                 Composer := value
               else
-              if style = '' then
-                Copyright := value;
+              if style = 'Subtitle' then
+                Subtitle := value;
             end;
           end;
         end else
@@ -307,7 +369,7 @@ begin
                         hyphen := Child2.Value = 'begin';
                       if GetChild('text', Child2, Child1) then
                       begin
-                        s := Child2.XmlValue;
+                        s := UTF8Decode(Child2.XmlValue);
                         if not hyphen and (s <> '') then
                           s := s + ' ';
                         Event.MakeMetaEvent(5, UTF8encode(s));
@@ -339,21 +401,22 @@ begin
                 delta := Events.DetailHeader.GetChordTicks(duration, dots);
                 if InTuplet then
                   delta := round(tupletFactor*delta);
-                inc(MidiEvents[Length(MidiEvents)-1].var_len, delta);
+                inc(MidiEvents[iMidiEvent-1][iMidiLength-1].var_len, delta);
               end;
             end;
           end;
         end;
       end;
 
-      if (iLyricsTrack < Length(Events.TrackArr)) and
+      if (iLyricsTrack >= 0) and (iLyricsTrack < Length(Events.TrackArr)) and
          UsesLyrics then
       begin
         if strictKaraoke then
         begin
-          Events.InsertTrack(0, 'Lyrics', MidiEvents);
+          Events.InsertTrack(0, 'Lyrics', MidiEvents[iMidiEvent-1]);
+          break;
         end else begin
-          TEventArray.MergeTracks(Events.TrackArr[iLyricsTrack], MidiEvents);
+          TEventArray.MergeTracks(Events.TrackArr[iLyricsTrack], MidiEvents[iMidiEvent-1]);
           TEventArray.MoveLyrics(Events.TrackArr[iLyricsTrack]);
         end;
       end;
@@ -363,8 +426,8 @@ begin
 
   if (Events.Text_ = '') then
     Events.Text_ := UTF8Encode(Title);
-  if (Events.Copyright = '') then
-    Events.Copyright := UTF8Encode(Copyright);
+  if (Events.Subtitle = '') then
+    Events.Subtitle := UTF8Encode(Subtitle);
   if (Events.Maker = '') then
     Events.Maker := UTF8Encode(Composer);
 
