@@ -417,6 +417,7 @@ var
   i: integer;
   RunningStatus: byte;
   offset: integer;
+  s: string;
 
   procedure AppendEvent;
   begin
@@ -510,7 +511,13 @@ begin
           case event.d1 of
             1: EventArray.Text_ := event.str;
             2: EventArray.copyright := event.str;
-            3: EventArray.TrackName[length(EventArray.TrackName)-1] := event.ansi;
+            3: begin
+                 s := UTF8decode(event.ansi);
+                 // Fehler von MuseScore
+                 if (Length(s) > 0) and (s[Length(s)] = #0) then
+                   SetLength(s, Length(s)-1);
+                 EventArray.TrackName[length(EventArray.TrackName)-1] := s;
+               end;
             4: EventArray.Instrument := event.str;
             6: EventArray.Maker := event.str;
     {        5,   // Lyrics

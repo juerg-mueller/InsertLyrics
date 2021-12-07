@@ -31,13 +31,15 @@ type
   TChannelEventArray = array [0..15] of TMidiEventArray;
   TTrackEventArray = array of TMidiEventArray;
   TAnsiStringArray = array of AnsiString;
+  TStringArray = array of string;
 
   TEventArray = class
   protected
-    TrackName_: TAnsiStringArray; // 03
+    TrackName_: TStringArray; // 03
     TrackArr_: TTrackEventArray;
   public
     Text_: String;     // 01
+    Subtitle: string;
     Copyright: String; // 02
     Instrument: String;// 04
     Maker: String;     // 06
@@ -57,7 +59,7 @@ type
     function GetHeaderTrack: TMidiEventArray;
     procedure InsertTrack(Index: integer; Name: string; const MidiEvents: TMidiEventArray);
 
-    property TrackName: TAnsiStringArray read TrackName_;
+    property TrackName: TStringArray read TrackName_;
     property TrackArr: TTrackEventArray read TrackArr_;
     property Track: TTrackEventArray read TrackArr_;
 
@@ -110,6 +112,7 @@ end;
 procedure TEventArray.Clear;
 begin
   Text_ := '';
+  Subtitle := '';
   Copyright := '';
   Instrument := '';
   Maker := '';
@@ -285,8 +288,8 @@ begin
   begin
     AppendMetaEvent(1, UTF8encode(Text_));
   end;
-  if Copyright <> '' then
-    AppendMetaEvent(2, UTF8encode(Copyright));
+  if Subtitle <> '' then
+    AppendMetaEvent(1, UTF8encode(Subtitle));
   if Maker <> '' then
     AppendMetaEvent(6, UTF8encode(Maker));
 end;
@@ -338,9 +341,9 @@ begin
     for i := Length(TrackArr)-2 downto Index do
     begin
       CopyEventArray(TrackArr_[i+1], TrackArr[i]);
-      TrackName_[i+1] := TrackName[i];
+      TrackName_[i+1] := TrackName_[i];
     end;
-    TrackName_[Index] := AnsiString(Name);
+    TrackName_[Index] := Name;
     CopyEventArray(TrackArr_[Index], MidiEvents);
   end;
 end;
@@ -641,25 +644,30 @@ class procedure TEventArray.MoveLyrics(var Events: TMidiEventArray);
 var
   i: integer;
   Event: TMidiEvent;
+  Ok: boolean;
 begin
-  i := 0;
-  while i < Length(Events) do
-  begin
-    Event := Events[i];
-    if Event.Event = 9 then
+  repeat
+    Ok := false;
+    i := 0;
+    while i < Length(Events) do
     begin
-      while (Event.var_len = 0) and (i < Length(Events)) and
-            (Events[i+1].command = $ff) and (Events[i+1].d1 = 5) do
+      Event := Events[i];
+      if Event.Event in [9, 11] then
       begin
-        Events[i] := Events[i+1];
-        inc(Event.var_len, Events[i].var_len);
-        Events[i].var_len := 0;
-        Events[i+1] := Event;
-        inc(i);
+        while (Event.var_len = 0) and (i < Length(Events)) and
+              (Events[i+1].command = $ff) and (Events[i+1].d1 = 5) do
+        begin
+          Events[i] := Events[i+1];
+          inc(Event.var_len, Events[i].var_len);
+          Events[i].var_len := 0;
+          Events[i+1] := Event;
+          inc(i);
+          Ok := true;
+        end;
       end;
+      inc(i);
     end;
-    inc(i);
-  end;
+  until not Ok;
 end;
 
 class procedure TEventArray.CopyEventArray(var OutArr: TMidiEventArray; const InArr: TMidiEventArray);
