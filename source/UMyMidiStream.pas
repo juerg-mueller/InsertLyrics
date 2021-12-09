@@ -403,7 +403,7 @@ end;
 
 function TDetailHeader.GetMetaDurMinor59: AnsiString;
 begin
-  result := AnsiChar(ShortInt(CDur and $f)) + AnsiChar(ord(Minor));
+  result := AnsiChar(ShortInt(CDur and $ff)) + AnsiChar(ord(Minor));
 end;
 
 function TDetailHeader.GetChordTicks(duration, dots: string): integer;

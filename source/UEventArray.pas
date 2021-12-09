@@ -301,9 +301,9 @@ var
 begin
   SaveStream := TMidiSaveStream.Create;
   try
+    SaveStream.SetHead(DetailHeader.DeltaTimeTicks);
     if not Lyrics then
     begin
-      SaveStream.SetHead(DetailHeader.DeltaTimeTicks);
       SaveStream.AppendTrackHead;
       SaveStream.AppendEvents(GetHeaderTrack);
       SaveStream.AppendTrackEnd(false);
