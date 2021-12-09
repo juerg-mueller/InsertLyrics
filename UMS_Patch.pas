@@ -180,7 +180,7 @@ begin
 
   Events.DetailHeader.smallestFraction := 64; // 64th
 {$ifdef TEST}
-  Events.SaveSimpleMidiToFile(FileName + '.txt');
+  Events.SaveSimpleMidiToFile(FileName + '.txt', true);
 {$endif}
   if not FileExists(FileName + '.mscz') and
      not FileExists(FileName + '.mscx') then
@@ -438,9 +438,9 @@ begin
       if Application.MessageBox(PChar(SaveDialog1.FileName + ' exists! Overwrite it?'),
                                 'Overwrite', MB_YESNO) <> ID_YES then
         exit;
-    result := Events.SaveMidiToFile(SaveDialog1.FileName, false);
+    result := Events.SaveMidiToFile(SaveDialog1.FileName, true);
 {$ifdef TEST}
-    Events.SaveSimpleMidiToFile(FileName + '_.txt', false);
+    Events.SaveSimpleMidiToFile(FileName + '_.txt', true);
 {$endif}
   end;
   SetLength(MidiEvents, 0);
