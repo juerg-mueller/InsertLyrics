@@ -2,7 +2,7 @@ object frmMS_Patch: TfrmMS_Patch
   Left = 0
   Top = 0
   Caption = 'Inserts MuseScore Lyrics into Midi File'
-  ClientHeight = 255
+  ClientHeight = 239
   ClientWidth = 535
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,7 +16,7 @@ object frmMS_Patch: TfrmMS_Patch
   OnCreate = FormCreate
   DesignSize = (
     535
-    255)
+    239)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -33,6 +33,13 @@ object frmMS_Patch: TfrmMS_Patch
     Font.Name = 'Tahoma'
     Font.Style = []
     ParentFont = False
+  end
+  object Label4: TLabel
+    Left = 198
+    Top = 208
+    Width = 33
+    Height = 13
+    Caption = 'Coding'
   end
   object Memo1: TMemo
     Left = 0
@@ -66,8 +73,8 @@ object frmMS_Patch: TfrmMS_Patch
     TabOrder = 0
   end
   object cbxKaraokeTrack: TCheckBox
-    Left = 132
-    Top = 203
+    Left = 136
+    Top = 179
     Width = 272
     Height = 20
     Alignment = taLeftJustify
@@ -80,6 +87,18 @@ object frmMS_Patch: TfrmMS_Patch
     Font.Style = []
     ParentFont = False
     TabOrder = 1
+  end
+  object cbxCodePage: TComboBox
+    Left = 262
+    Top = 205
+    Width = 81
+    Height = 21
+    ItemIndex = 0
+    TabOrder = 2
+    Text = 'UTF-8'
+    Items.Strings = (
+      'UTF-8'
+      'ISO 8859-1')
   end
   object OpenDialog1: TOpenDialog
     Filter = 'MuseScore Files|*.mscz;*.mscx'

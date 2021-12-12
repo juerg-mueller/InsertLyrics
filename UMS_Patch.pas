@@ -26,6 +26,8 @@ type
     SaveDialog1: TSaveDialog;
     cbxKaraokeTrack: TCheckBox;
     Label1: TLabel;
+    Label4: TLabel;
+    cbxCodePage: TComboBox;
     procedure Button1Click(Sender: TObject);
     procedure WMDropFiles(var Msg: TWMDropFiles); message WM_DROPFILES;
     procedure FormCreate(Sender: TObject);
@@ -46,10 +48,6 @@ implementation
 
 uses
   UMyMidiStream, UMidiDataStream, UEventArray, UXmlParser, UXmlNode;
-
-const
-  NoteNames: array [0..7] of string =
-    ('whole', 'half', 'quarter', 'eighth', '16th', '32nd', '64th', '128th');
 
 
 procedure TfrmMS_Patch.WMDropFiles(var Msg: TWMDropFiles);
@@ -88,18 +86,6 @@ begin
   Msg.Result := 0;
 end;
 
-function GetFraction_(const sLen: string): integer; overload;
-var
-  idx: integer;
-begin
-  result := 128;
-  for idx := High(NoteNames) downto 0 do
-    if sLen = NoteNames[idx] then
-      break
-    else
-      result := result shr 1;
-end;
-
 procedure TfrmMS_Patch.FormCreate(Sender: TObject);
 begin
   DragAcceptFiles(Self.Handle, true);
@@ -129,6 +115,7 @@ var
   trackName: array of string;
   instrumentName: array of string;
   vers: double;
+  CodePage: integer;
 
   procedure AppendEvent;
   begin
@@ -159,6 +146,11 @@ var
 begin
   result := false;
   strictKaraoke := cbxKaraokeTrack.Checked;
+  case cbxCodePage.ItemIndex of
+    0: CodePage := CP_UTF8;
+    1: CodePage := 28591; // Ansi-Code iso-8859-1
+    else CodePage := CP_UTF8;
+  end;
   Ext := ExtractFileExt(FileName);
   SetLength(FileName, Length(FileName) - Length(Ext));
 
@@ -366,13 +358,14 @@ begin
                       inc(no);
                       hyphen := GetChild('syllabic', Child2, Child1);
                       if hyphen then
-                        hyphen := Child2.Value = 'begin';
+                        hyphen := (Child2.Value = 'begin') or
+                                  (Child2.Value = 'middle');
                       if GetChild('text', Child2, Child1) then
                       begin
                         s := UTF8Decode(Child2.XmlValue);
                         if not hyphen and (s <> '') then
                           s := s + ' ';
-                        Event.MakeMetaEvent(5, UTF8encode(s));
+                        Event.MakeMetaEvent(5, s, CodePage);
                         AppendEvent;
                         if not UsesLyrics and
                            strictKaraoke then
