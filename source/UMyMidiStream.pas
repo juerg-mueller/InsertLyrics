@@ -23,7 +23,7 @@ interface
 //{$endif}
 
 uses
-  SysUtils, Classes, Types, UMyMemoryStream;
+  SysUtils, Classes, Types, WinApi.Windows, UMyMemoryStream;
 
 Const
   cSimpleHeader = AnsiString('Header');
@@ -60,15 +60,22 @@ type
     function IsEqualEvent(const Event: TMidiEvent): boolean;
     procedure SetEvent(c, d1_, d2_: integer);
     procedure AppendByte(b: byte);
-    procedure MakeMetaEvent(EventNr: byte; b: AnsiString);
+    procedure MakeMetaEvent(EventNr: byte; b: AnsiString); overload;
+    procedure MakeMetaEvent(EventNr: byte; s: string; CodePage: integer = CP_UTF8); overload;
     procedure FillBytes(const b: AnsiString);
     function GetBytes: string;
     function GetAnsi: AnsiString;
     function GetInt: cardinal;
+    function GetAnsiChar(Idx: integer): AnsiChar;
+    procedure SetAnsiChar(Idx: integer; c: AnsiChar);
+    function GetCodeStr(Idx: integer): string;
+    procedure SetCodeStr(Idx: integer; const s: string);
 
     property str: String read GetBytes;
     property ansi: AnsiString read GetAnsi;
     property int: cardinal read GetInt;
+    property code[Idx: integer]: string read GetCodeStr write SetCodeStr;
+    property char_[Idx: integer]: Ansichar read GetAnsiChar write SetAnsiChar; default;
   end;
   PMidiEvent = ^TMidiEvent;
 
@@ -94,7 +101,8 @@ type
     function TicksPerMeasure: integer;
     function TicksToSec(Ticks: integer): integer;
     function TicksToString(Ticks: integer): string;
-    function SetTimeSignature(const Event: TMidiEvent; const Bytes: array of byte): boolean;
+    function SetTimeSignature(const Event: TMidiEvent; const Bytes: array of byte): boolean; overload;
+    function SetTimeSignature(const Event: TMidiEvent): boolean; overload;
     function SetBeatsPerMin(const Event: TMidiEvent; const Bytes: array of byte): boolean;
     function SetDurMinor(const Event: TMidiEvent; const Bytes: array of byte): boolean;
     function SetParams(const Event: TMidiEvent; const Bytes: array of byte): boolean;
@@ -103,6 +111,7 @@ type
     function GetMetaDurMinor59: AnsiString;
     function GetDur: string;
     function GetChordTicks(duration, dots: string): integer;
+    function MeasureRestTicks(t32takt: double): integer;
   end;
   PDetailHeader = ^TDetailHeader;
 
@@ -140,6 +149,21 @@ function Min(a, b: integer): integer; inline;
 function Max(a, b: integer): integer; inline;
 
 function BytesToAnsiString(const Bytes: array of byte): AnsiString;
+
+const
+  NoteNames: array [0..7] of string =
+    ('whole', 'half', 'quarter', 'eighth', '16th', '32nd', '64th', '128th');
+
+function GetFraction_(const sLen: string): integer; overload;
+function GetFraction_(const sLen: integer): string; overload;
+function GetLen_(var t32: integer; var dot: boolean; t32Takt: integer): integer;
+function GetLen2_(var t32: integer; var dot: boolean; t32Takt: integer): integer;
+
+
+function GetLen2(var t32: integer; var dot: boolean; t32Takt: integer): string;
+
+function GetLyricLen(Len: string): integer;
+
 
 implementation
 
@@ -192,6 +216,20 @@ begin
   for i := 0 to Length(Bytes)-1 do
     result := (result shl 8) + Bytes[i];
 end;
+
+function TMidiEvent.GetAnsiChar(Idx: integer): AnsiChar;
+begin
+  result := #0;
+  if (Idx >= 0) and (Idx < Length(bytes)) then
+    result := AnsiChar(bytes[Idx]);
+end;
+
+procedure TMidiEvent.SetAnsiChar(Idx: integer; c: AnsiChar);
+begin
+  if (Idx >= 0) and (Idx < Length(bytes)) then
+    bytes[Idx] := byte(c);
+end;
+
 
 function BytesToAnsiString(const Bytes: array of byte): AnsiString;
 var
@@ -257,6 +295,11 @@ begin
   end;
 end;
 
+function TDetailHeader.SetTimeSignature(const Event: TMidiEvent): boolean;
+begin
+  result := SetTimeSignature(Event, Event.bytes);
+end;
+
 function TDetailHeader.SetDurMinor(const Event: TMidiEvent; const Bytes: array of byte): boolean;
 begin
   result := (Event.command = $ff) and (Event.d1 = $59) and (Event.d2 = 2) and (Length(Bytes) = 2);
@@ -320,6 +363,8 @@ end;
 function TDetailHeader.GetRaster(p: integer): integer;
 var
   s: integer;
+  delta1, delta2: integer;
+  res1, res2: integer;
 begin
   if p < 0 then
     result := -GetRaster(-p)
@@ -328,7 +373,15 @@ begin
     result := DeltaTimeTicks  div 8
   else begin
     s := GetSmallestTicks;
-    result := s*((p + 2*s div 3) div s);
+    res1 := s*((p + 2*s div 3) div s);
+    delta1 := abs(p - res1);
+    s := 2*s div 3; // Triole
+    res2 := s*((p + 2*s div 3) div s);
+    delta2 := abs(p - res2);
+    if delta1 <= delta2 then
+      result := res1
+    else
+      result := res2;
   end;
 end;
 
@@ -411,13 +464,23 @@ var
   h, d, p: integer;
   n, f: string;
 begin
-  result := 0;
-  p := Pos('/', duration);
-  if p > 0 then
+  if LowerCase(duration) = 'measure' then
   begin
-    n := Copy(Duration, 1, p-1);
-    f := Copy(Duration, p+1, length(duration));
-    result := 4*DeltaTimeTicks*StrToInt(n) div StrToInt(f);
+    result := TicksPerMeasure;
+    exit;
+  end;
+  result := GetFraction_(duration);
+  if result > 0 then   // 128th
+  begin
+    result := 4*DeltaTimeTicks div result;
+  end else begin
+    p := Pos('/', duration);
+    if p > 0 then
+    begin
+      n := Copy(Duration, 1, p-1);
+      f := Copy(Duration, p+1, length(duration));
+      result := 4*DeltaTimeTicks*StrToInt(n) div StrToInt(f);
+    end;
   end;
   d := StrToIntDef(dots, 0);
   h := result;
@@ -427,6 +490,11 @@ begin
     inc(result, h);
     dec(d);
   end;
+end;
+
+function TDetailHeader.MeasureRestTicks(t32takt: double): integer;
+begin
+  result := round(DeltaTimeTicks*t32takt / 8.0);
 end;
 
 
@@ -527,6 +595,50 @@ begin
   result := (command = Event.command) and (d1 = Event.d1) and (d2 = Event.d2);
 end;
 
+function TMidiEvent.GetCodeStr(Idx: integer): string;
+var
+  a: AnsiString;
+  l: integer;
+begin
+  a := ansi;
+  if (Idx <= 0) or (command <> $ff) or not (d1 in [1, 5, 6]) then
+    Idx := CP_UTF8;
+
+  l := Length(a);
+  if l > 0 then
+    l := MultiByteToWideChar(Idx, 0, @a[1], Length(a), nil, 0);
+  SetLength(result, l);
+  if l > 0 then
+    MultiByteToWideChar(Idx, 0, PAnsiChar(a), l, PWideChar(result), l);
+end;
+
+procedure TMidiEvent.SetCodeStr(Idx: integer; const s: string);
+var
+  a: AnsiString;
+  l: integer;
+begin
+  if (Idx <= 0) or (command <> $ff) or not (d1 in [1, 5, 6]) then
+    exit;
+
+  l := Length(s);
+
+  if l > 0 then
+    l := WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), nil, 0, nil, nil);
+  SetLength(a, l);
+  WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), PAnsiChar(a), l, nil, nil);
+  FillBytes(a);
+end;
+
+procedure TMidiEvent.MakeMetaEvent(EventNr: byte; s: string; CodePage: integer = CP_UTF8);
+begin
+  command := $ff;
+  d1 := EventNr;
+  if EventNr in [1, 5, 6] then
+    Code[CodePage] := s
+  else
+    FillBytes(string(str));
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure TMyMidiStream.MidiWait(Delay: integer);
@@ -595,6 +707,148 @@ class function TMyMidiStream.IsEndOfTrack(const d: TInt4): boolean;
 begin
   result :=  (d[1] = $ff) and (d[2] = $2f) and (d[3] = 0);
 end;
+
+function GetFraction_(const sLen: string): integer; overload;
+var
+  idx: integer;
+begin
+  result := 128;
+  for idx := High(NoteNames) downto 0 do
+    if sLen = NoteNames[idx] then
+      break
+    else
+      result := result shr 1;
+end;
+
+function GetFraction_(const sLen: integer): string; overload;
+var
+  idx, i: integer;
+begin
+  result := '?';
+  idx := 128;
+  for i := High(NoteNames) downto 0 do
+    if sLen = idx then
+    begin
+      result := NoteNames[i];
+      break
+    end else
+      idx := idx shr 1;
+end;
+
+function GetLen_(var t32: integer; var dot: boolean; t32Takt: integer): integer;
+// at most one dot
+var
+  t: integer;
+
+  function Check: boolean;
+  begin
+    result := (t32 and t) <> 0;
+  end;
+
+  procedure DoCheck;
+  begin
+    while (result = 0) and (t <= 32) do
+    begin
+      if Check then
+        result := t;
+      t := t shl 1;
+    end;
+  end;
+
+
+  procedure DoCheckBig;
+  begin
+    while (result = 0) and (t > 0) do
+    begin
+      if Check then
+        result := t;
+      t := t shr 1;
+    end;
+  end;
+
+begin
+  dot := false;
+  result := 0;
+
+  // als eine Note
+  t := $20;
+  while t >= 1 do
+  begin
+    if ((t and t32) <> 0) and
+       ((t32 and not (t + t shr 1)) = 0) then
+    begin
+      result := t;
+      dot := (t32 and (t shr 1)) <> 0;
+      break;
+    end else
+      t := t shr 1;
+  end;
+
+  if (result = 0) and ((t32Takt mod 8) = 0) then
+  begin
+    t := 32;
+    DoCheckBig;
+  end;
+  // whole   32
+  // halfe   16
+  // quarter: 8
+  // eighth:  4
+  // 16th:    2
+  // 32nd:    1
+  t := 1;
+  if result = 0 then
+  begin
+    t := 1;
+    DoCheck;
+  end;
+  dec(t32, result);
+  if dot then
+    dec(t32, result div 2);
+end;
+
+function GetLen2_(var t32: integer; var dot: boolean; t32Takt: integer): integer;
+// no dot
+begin
+  dot := false;
+  result := $20;
+  while result >= 1 do
+  begin
+    if (result and t32) <> 0 then
+    begin
+      break;
+    end else
+      result := result shr 1;
+  end;
+  dec(t32, result);
+end;
+
+function GetLen2(var t32: integer; var dot: boolean; t32Takt: integer): string;
+var
+  val: integer;
+begin
+  dot := false;
+  val := GetLen2_(t32, Dot, t32takt);
+  if val = 0 then
+    result := '?'
+  else
+    result := GetFraction_(32 div val);
+end;
+
+function GetLyricLen(Len: string): integer;
+begin
+  result := High(NoteNames);
+  while (result >= 0) and (Len <> NoteNames[result]) do
+    dec(result);
+  if result < 0 then
+    result := 2; // quarter
+
+  case result of
+    0: result := 58612;
+    1: result := 58613;
+    else inc(result, 58595);
+  end;
+end;
+
 
 end.
 
