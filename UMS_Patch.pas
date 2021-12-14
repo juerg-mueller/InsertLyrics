@@ -163,7 +163,7 @@ begin
   end;
 
   Events := TEventArray.Create;
-  if not Events.LoadMidiFromFile(FileName + '.mid') then
+  if not Events.LoadMidiFromFile(FileName + '.mid', true) then
   begin
     Application.MessageBox(
       PChar(Format('File "%s.mid" not read!', [FileName])), 'Error', MB_OK);
