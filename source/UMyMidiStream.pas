@@ -604,12 +604,17 @@ begin
   if (Idx <= 0) or (command <> $ff) or not (d1 in [1, 5, 6]) then
     Idx := CP_UTF8;
 
-  l := Length(a);
-  if l > 0 then
-    l := MultiByteToWideChar(Idx, 0, @a[1], Length(a), nil, 0);
-  SetLength(result, l);
-  if l > 0 then
-    MultiByteToWideChar(Idx, 0, PAnsiChar(a), l, PWideChar(result), l);
+  if Idx = CP_UTF8 then
+  begin
+    result := UTF8decode(a);
+  end else begin
+    l := Length(a);
+    if l > 0 then
+      l := MultiByteToWideChar(Idx, 0, @a[1], Length(a), nil, 0);
+    SetLength(result, l);
+    if l > 0 then
+      MultiByteToWideChar(Idx, 0, PAnsiChar(a), l, PWideChar(result), l);
+  end;
 end;
 
 procedure TMidiEvent.SetCodeStr(Idx: integer; const s: string);
@@ -620,12 +625,17 @@ begin
   if (Idx <= 0) or (command <> $ff) or not (d1 in [1, 5, 6]) then
     exit;
 
-  l := Length(s);
+  if Idx = CP_UTF8 then
+  begin
+    a := UTF8encode(s);
+  end else begin
+    l := Length(s);
 
-  if l > 0 then
-    l := WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), nil, 0, nil, nil);
-  SetLength(a, l);
-  WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), PAnsiChar(a), l, nil, nil);
+    if l > 0 then
+      l := WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), nil, 0, nil, nil);
+    SetLength(a, l);
+    WideCharToMultiByte(Idx, 0, PWideChar(s), Length(s), PAnsiChar(a), l, nil, nil);
+  end;
   FillBytes(a);
 end;
 
