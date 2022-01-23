@@ -49,7 +49,7 @@ type
 
     constructor Create;
     destructor Destroy; override;
-    function LoadMidiFromFile(FileName: string): boolean;
+    function LoadMidiFromFile(FileName: string; Lyrics: boolean): boolean;
     function SaveMidiToFile(FileName: string; Lyrics: boolean): boolean;
     function SaveSimpleMidiToFile(FileName: string; Lyrics: boolean = false): boolean;
     procedure Clear;
@@ -139,7 +139,7 @@ begin
   result := Length(TrackArr_);
 end;
 
-function TEventArray.LoadMidiFromFile(FileName: string): boolean;
+function TEventArray.LoadMidiFromFile(FileName: string; Lyrics: boolean): boolean;
 var
   Midi: TMidiDataStream;
 begin
@@ -147,7 +147,7 @@ begin
   Midi := TMidiDataStream.Create;
   try
     Midi.LoadFromFile(FileName);
-    result := Midi.MakeEventArray(self);
+    result := Midi.MakeEventArray(self, Lyrics);
     MakeSingleTrack(SingleTrack, TrackArr);
     SplitEventArray(ChannelArray, SingleTrack, Length(SingleTrack));
   finally
