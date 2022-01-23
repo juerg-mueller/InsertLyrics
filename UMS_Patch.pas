@@ -89,6 +89,9 @@ end;
 procedure TfrmMS_Patch.FormCreate(Sender: TObject);
 begin
   DragAcceptFiles(Self.Handle, true);
+  Application.UpdateFormatSettings := false;
+  FormatSettings.DecimalSeparator := '.';
+  Application.UpdateFormatSettings := true;
 end;
 
 function TfrmMS_Patch.Merge(FileName: string): boolean;
