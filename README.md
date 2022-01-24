@@ -15,3 +15,5 @@ Kontakt unter: https://musescore.org/de/node/326233
 11/22/2021: More improvents and some corrections. 
 
 11/28/21: Supports tuplets 
+
+1/24/22: 64 bit version added (works with wine on MAC M1)
