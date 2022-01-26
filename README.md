@@ -16,4 +16,4 @@ Kontakt unter: https://musescore.org/de/node/326233
 
 11/28/21: Supports tuplets 
 
-1/24/22: 64 bit version added (works with wine on MAC M1)
+1/24/22: 64 bit version added (works with wine on MAC M1) / not working, because drop is not working
