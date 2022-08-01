@@ -8,7 +8,7 @@ Dieses Programm ergänzt eine exportierte Midi-Datei, indem es die Lyrics der ms
 
 InsertLyrics ist ein Workaround, bis MuseScore die Funktionalität enthält.
 
-First of all you have to save your score as MuseScore file (.mscx or .mscz). Then you export your score as MIDI file (.mid). Both files have to have the same name. Start the program InsertLyrics.exe an drop the MuseScore file on the program window and you will get the merged file with the lyrics.
+First of all you have to save your score as MuseScore file (.mscx or .mscz). Then you export your score as MIDI file (.mid). Both files have to have the same name. Start the program InsertLyrics.exe and drop the MuseScore file on the program window and you will get the merged file with the lyrics.
 
 Kontakt unter: https://musescore.org/de/node/326233
 
